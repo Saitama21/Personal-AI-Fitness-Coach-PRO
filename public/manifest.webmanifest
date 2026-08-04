@@ -1,0 +1,16 @@
+{
+  "name": "FORMA AI — персональный тренер",
+  "short_name": "FORMA AI",
+  "description": "Адаптивный мобильный фитнес-тренер с планом, журналом и анализом прогресса.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#eee9e3",
+  "theme_color": "#ddd6cf",
+  "lang": "ru",
+  "icons": [
+    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}
