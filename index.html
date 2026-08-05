@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>CNC Trainer — ShopTurn 828D</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="app-shell">
+    <header class="topbar glass">
+      <div>
+        <div class="eyebrow">Учебный симулятор</div>
+        <h1>CNC Trainer · ShopTurn 828D</h1>
+      </div>
+      <div class="status-pill"><span class="dot"></span> Готов к работе</div>
+    </header>
+
+    <main class="layout">
+      <aside class="sidebar glass">
+        <section>
+          <h2>Режим</h2>
+          <div class="segmented" id="modeTabs">
+            <button class="active" data-mode="turning">Точение</button>
+            <button data-mode="drilling">Сверление</button>
+            <button data-mode="milling">Фрезеровка</button>
+          </div>
+        </section>
+
+        <section>
+          <h2>Координаты</h2>
+          <div class="coord-grid">
+            <label>X, мм<input id="xInput" type="number" step="0.1" value="60"></label>
+            <label>Z, мм<input id="zInput" type="number" step="0.1" value="10"></label>
+            <label class="y-field hidden">Y, мм<input id="yInput" type="number" step="0.1" value="0"></label>
+            <label>Подача<input id="feedInput" type="number" step="0.01" value="0.2"></label>
+          </div>
+          <div class="button-row">
+            <button class="primary" id="moveBtn">Переместить</button>
+            <button id="cutBtn">Резать</button>
+          </div>
+          <div class="button-row">
+            <button id="homeBtn">В безопасную</button>
+            <button class="danger" id="resetBtn">Сбросить</button>
+          </div>
+        </section>
+
+        <section>
+          <h2>Обучение</h2>
+          <div class="lesson-card" id="lessonCard">
+            <strong>Урок 1. Оси X/Z</strong>
+            <p>Перемести резец в X50 Z0. На токарном станке X задаётся по диаметру, Z — вдоль детали.</p>
+          </div>
+          <button class="wide" id="checkBtn">Проверить действие</button>
+        </section>
+      </aside>
+
+      <section class="workspace glass">
+        <div class="workspace-toolbar">
+          <div>
+            <div class="eyebrow">Станок Tengyue CK52PT‑Y</div>
+            <h2 id="workspaceTitle">Токарная симуляция</h2>
+          </div>
+          <div class="legend">
+            <span><i class="axis-x"></i>X</span>
+            <span><i class="axis-z"></i>Z</span>
+            <span><i class="tool-color"></i>Инструмент</span>
+          </div>
+        </div>
+        <div class="canvas-wrap">
+          <canvas id="simCanvas" width="1200" height="700"></canvas>
+          <div class="hud" id="hud">X60.0 · Z10.0 · безопасный ход</div>
+        </div>
+      </section>
+
+      <aside class="rightbar glass">
+        <section>
+          <h2>Револьвер</h2>
+          <div class="tool-grid" id="toolGrid"></div>
+        </section>
+        <section>
+          <h2>Журнал</h2>
+          <div class="log" id="log"></div>
+        </section>
+      </aside>
+    </main>
+  </div>
+  <script src="app.js"></script>
+</body>
+</html>
