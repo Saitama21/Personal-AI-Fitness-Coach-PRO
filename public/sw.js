@@ -1,4 +1,4 @@
-const CACHE = "forma-ai-v0.4.2-audit2";
+const CACHE = "forma-ai-v0.4.3-audit3";
 const APP_SHELL = [
   "/",
   "/index.html",
@@ -16,13 +16,10 @@ const APP_SHELL = [
   "/assets/exercises/glute_bridge.webp",
   "/assets/exercises/goblet_squat.webp",
   "/assets/exercises/hip_thrust.webp",
-  "/assets/exercises/incline_pushup.webp",
   "/assets/exercises/lateral_raise.webp",
   "/assets/exercises/plank.webp",
   "/assets/exercises/rear_delt_fly.webp",
-  "/assets/exercises/reverse_lunge.webp",
   "/assets/exercises/romanian_deadlift.webp",
-  "/assets/exercises/split_squat.webp",
   "/assets/exercises/step_up.webp"
 ];
 

@@ -295,8 +295,53 @@ function scanLayoutIssues(scope = document) {
     }
   }
 
+  const artFrames = [...scope.querySelectorAll("[data-art-contract='exercise-3x2']")].filter((element) => {
+    const rect = element.getBoundingClientRect();
+    const style = getComputedStyle(element);
+    return style.display !== "none" && style.visibility !== "hidden" && rect.width > 0 && rect.height > 0;
+  });
+  for (const frame of artFrames) {
+    const rect = frame.getBoundingClientRect();
+    const expectedRatio = 3 / 2;
+    const actualRatio = rect.height ? rect.width / rect.height : null;
+    const ratioError = actualRatio ? Math.abs(actualRatio - expectedRatio) / expectedRatio : 1;
+    if (ratioError > 0.02) {
+      addIssue(issue("layout.exercise_art_ratio_mismatch", "fail", "Большой visual упражнения нарушает единый контракт 3:2.", frame, {
+        expectedAspectRatio: round(expectedRatio, 4),
+        actualAspectRatio: round(actualRatio, 4),
+        relativeError: round(ratioError, 4)
+      }));
+    }
+    const image = frame.querySelector("img.exercise-art-image");
+    if (image?.naturalWidth && image?.naturalHeight) {
+      const naturalRatio = image.naturalWidth / image.naturalHeight;
+      const assetError = Math.abs(naturalRatio - expectedRatio) / expectedRatio;
+      if (assetError > 0.02) {
+        addIssue(issue("visual.asset_aspect_ratio_mismatch", "warn", "Visual asset не соответствует стандартному формату exercise pack 3:2.", image, {
+          expectedAspectRatio: round(expectedRatio, 4),
+          naturalAspectRatio: round(naturalRatio, 4),
+          relativeError: round(assetError, 4)
+        }));
+      }
+    }
+  }
+
   const nav = isDocumentScope ? document.querySelector(".bottom-nav") : null;
   const shell = isDocumentScope ? document.querySelector(".app-shell") : null;
+  if (nav && getComputedStyle(nav).display !== "none") {
+    const navRect = nav.getBoundingClientRect();
+    const workoutActions = document.querySelector(".workout-actions");
+    if (workoutActions && getComputedStyle(workoutActions).display !== "none") {
+      const actionRect = workoutActions.getBoundingClientRect();
+      const overlapX = Math.max(0, Math.min(actionRect.right, navRect.right) - Math.max(actionRect.left, navRect.left));
+      const overlapY = Math.max(0, Math.min(actionRect.bottom, navRect.bottom) - Math.max(actionRect.top, navRect.top));
+      if (overlapX > 2 && overlapY > 2) {
+        addIssue(issue("layout.dock.occludes_workout_actions", "fail", "Floating Dock перекрывает кнопки управления активной тренировкой.", workoutActions, {
+          overlapWidth: round(overlapX), overlapHeight: round(overlapY), navRect: rectOf(nav)
+        }));
+      }
+    }
+  }
   if (nav && shell && getComputedStyle(nav).display !== "none") {
     const navRect = nav.getBoundingClientRect();
     const shellStyle = getComputedStyle(shell);
@@ -315,12 +360,12 @@ function scanLayoutIssues(scope = document) {
 function keyElementSnapshot(scope = document) {
   const selectors = [
     ".app-shell", ".topbar", ".screen-root", ".bottom-nav", ".workout-header", ".progress-track",
-    ".current-exercise", ".current-art", ".exercise-art-image", ".exercise-title-row", ".sets-grid",
+    ".current-exercise", ".exercise-art-frame", ".current-art", ".exercise-art-image", ".exercise-title-row", ".sets-grid",
     ".add-set-button", ".effort-grid", ".workout-actions", ".plan-card", ".hero-card", ".stat-grid",
     ".bottom-sheet", ".instruction-art", ".technique-strip"
   ];
   const output = [];
-  const ruleSelectors = new Set([".app-shell", ".bottom-nav", ".current-exercise", ".current-art", ".exercise-art-image", ".sets-grid", ".effort-grid", ".workout-actions", ".bottom-sheet", ".instruction-art"]);
+  const ruleSelectors = new Set([".app-shell", ".bottom-nav", ".current-exercise", ".exercise-art-frame", ".current-art", ".exercise-art-image", ".sets-grid", ".effort-grid", ".workout-actions", ".bottom-sheet", ".instruction-art"]);
   for (const selector of selectors) {
     const elements = [...scope.querySelectorAll(selector)].slice(0, selector === ".plan-card" ? 5 : 2);
     for (const element of elements) output.push(elementEvidence(element, ruleSelectors.has(selector)));
@@ -449,7 +494,8 @@ async function inspectExerciseVisual(exercise) {
       visualReady: exercise.visualReady !== false,
       url: null,
       status: "missing_by_design",
-      productionReady: exercise.productionReady !== false
+      productionReady: exercise.productionReady !== false,
+      visualIssue: exercise.visualIssue || null
     };
   }
 
@@ -510,6 +556,7 @@ async function inspectExerciseVisual(exercise) {
     name: exercise.name,
     visualReady: exercise.visualReady !== false,
     productionReady: exercise.productionReady !== false,
+    visualIssue: exercise.visualIssue || null,
     url: exercise.visual,
     response: responseInfo,
     contentFingerprint,
@@ -640,9 +687,17 @@ export function auditDataIntegrity({ state, exercises }) {
     .map((entry) => byId.get(entry.id))
     .filter((exercise) => exercise && exercise.productionReady === false)
     .map((exercise) => exercise.id))];
-  push("data.plan_production_visuals", notProductionReady.length ? "fail" : "pass",
-    notProductionReady.length ? "В production-план попали упражнения без готового visual pack." : "В плане нет упражнений, помеченных как productionReady=false.",
+  push("data.plan_production_ready", notProductionReady.length ? "fail" : "pass",
+    notProductionReady.length ? "В план попали упражнения, не готовые по данным/безопасности." : "В плане нет упражнений, помеченных как productionReady=false.",
     { exerciseIds: notProductionReady });
+
+  const visualPending = [...new Map(planExercises
+    .map((entry) => byId.get(entry.id))
+    .filter((exercise) => exercise && exercise.visualReady === false)
+    .map((exercise) => [exercise.id, { exerciseId: exercise.id, visualIssue: exercise.visualIssue || "visual_pending" }])).values()];
+  push("data.plan_visual_readiness", visualPending.length ? "warn" : "pass",
+    visualPending.length ? "В плане есть корректные упражнения с забракованным или ещё неготовым visual pack; UI должен показывать placeholder, а не неправильное изображение." : "Все упражнения текущего плана имеют готовый visual pack.",
+    { pending: visualPending });
 
   return tests;
 }

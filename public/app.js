@@ -28,7 +28,7 @@ const state = {
   messages: [
     { role: "ai", text: "Привет. Я буду менять план по фактическим весам, повторениям и самочувствию. Что нужно скорректировать?" }
   ],
-  config: { aiEnabled: false, mode: "local", version: "0.4.2" },
+  config: { aiEnabled: false, mode: "local", version: "0.4.3" },
   deferredInstall: null,
   auditRunning: false,
   lastAuditReport: null
@@ -125,7 +125,7 @@ function formatTimer() {
 function exerciseArt(id, large = false) {
   const exercise = state.exercises.find((item) => item.id === id);
   if (!exercise?.visual) {
-    return `<div class="exercise-art-placeholder${large ? " is-large" : ""}" role="img" aria-label="Визуал упражнения готовится"><span>FORMA</span><small>visual pending</small></div>`;
+    return `<div class="exercise-art-placeholder${large ? " is-large" : ""}" role="img" aria-label="Визуал упражнения обновляется"><span>FORMA</span><small>Визуал обновляется</small></div>`;
   }
   return `<img class="exercise-art-image${large ? " is-large" : ""}" src="${exercise.visual}" alt="Техника выполнения: ${escapeHtml(exercise.name)}" ${large ? 'loading="eager"' : 'loading="lazy"'} decoding="async" draggable="false">`;
 }
@@ -204,7 +204,9 @@ function render() {
   requestAnimationFrame(() => { root.style.animation = ""; });
   if (!state.profile) return renderOnboarding();
   $(".topbar").hidden = state.screen !== "home";
-  $(".bottom-nav").hidden = false;
+  const workoutMode = state.screen === "workout";
+  $(".bottom-nav").hidden = workoutMode;
+  $("#app").classList.toggle("workout-mode", workoutMode);
   $$(".nav-item").forEach((button) => button.classList.toggle("active", button.dataset.screen === state.screen));
   if (state.screen === "home") renderHome();
   if (state.screen === "plan") renderPlan();
@@ -399,6 +401,8 @@ function initActiveWorkout() {
 }
 
 function renderWorkout() {
+  $(".bottom-nav").hidden = true;
+  $("#app").classList.add("workout-mode");
   initActiveWorkout();
   if (!state.activeWorkout) {
     root.innerHTML = `<div class="empty-state premium-card"><div class="emoji">🌿</div><h2>Сегодня восстановление</h2><p class="subtle">В плане пока нет активной тренировки.</p></div>`;
@@ -409,10 +413,10 @@ function renderWorkout() {
   const setCount = Math.max(1, exercise.setLogs.length);
   const progress = ((state.workoutIndex + exercise.setLogs.filter((item) => item.done).length / setCount) / workout.exercises.length) * 100;
   root.innerHTML = `<section class="workout-screen">
-    <div class="workout-header"><div><p class="eyebrow">${escapeHtml(workout.dayName)} · ${escapeHtml(workout.title)}</p><h1>${escapeHtml(exercise.name)}</h1><p class="subtle">Упражнение ${state.workoutIndex + 1} из ${workout.exercises.length}</p></div><div class="timer-badge premium-card" id="workoutTimer">${formatTimer()}</div></div>
+    <div class="workout-header"><div class="workout-heading"><button class="workout-exit-button" data-action="exit-workout" aria-label="Вернуться к плану">←</button><div><p class="eyebrow">${escapeHtml(workout.dayName)} · ${escapeHtml(workout.title)}</p><h1>${escapeHtml(exercise.name)}</h1><p class="subtle">Упражнение ${state.workoutIndex + 1} из ${workout.exercises.length}</p></div></div><div class="timer-badge premium-card" id="workoutTimer">${formatTimer()}</div></div>
     <div class="progress-track" aria-label="Прогресс тренировки"><span style="width:${progress}%"></span></div>
     <article class="current-exercise premium-card">
-      <button class="current-art" data-exercise="${exercise.id}" aria-label="Открыть технику ${escapeHtml(exercise.name)}">${exerciseArt(exercise.id, true)}<span class="art-hint">Техника</span></button>
+      <button class="current-art exercise-art-frame" data-art-contract="exercise-3x2" data-exercise="${exercise.id}" aria-label="Открыть технику ${escapeHtml(exercise.name)}">${exerciseArt(exercise.id, true)}<span class="art-hint">Техника</span></button>
       <div class="exercise-title-row"><div><div class="exercise-meta-row"><span class="muscle-pill">${escapeHtml(exercise.muscle)}</span><span>Отдых ${exercise.rest} сек.</span></div></div><button class="info-button" data-exercise="${exercise.id}" aria-label="Техника упражнения">i</button></div>
       <div class="sets-grid"><span class="label">Сет</span><span class="label">Вес</span><span class="label">Повт.</span><span class="label">Готово</span>
         ${exercise.setLogs.map((set, index) => `<span class="set-index">${index + 1}</span><input class="set-input" inputmode="decimal" data-set-weight="${index}" value="${set.weight}" aria-label="Вес подхода ${index+1}"/><input class="set-input" inputmode="numeric" data-set-reps="${index}" value="${set.reps}" aria-label="Повторения подхода ${index+1}"/><button class="set-check ${set.done ? "done" : ""}" data-set-done="${index}" aria-label="Отметить подход">${icons.check}</button>`).join("")}
@@ -486,7 +490,7 @@ function openExercise(id) {
   if (!exercise) return;
   const muscleGroups = exercise.muscleGroups?.length ? exercise.muscleGroups : [exercise.muscle];
   modalRoot.innerHTML = `<div class="modal-backdrop" data-close-modal><section class="bottom-sheet technique-sheet" role="dialog" aria-modal="true" aria-label="Техника ${escapeHtml(exercise.name)}"><div class="sheet-handle"></div><div class="sheet-head"><div><p class="eyebrow">Техника выполнения</p><h2>${escapeHtml(exercise.name)}</h2><p class="subtle">${escapeHtml(exercise.muscle)}</p></div><button class="close-button" data-close-modal aria-label="Закрыть">×</button></div>
-    <div class="instruction-art">${exerciseArt(id, true)}</div>
+    <div class="instruction-art exercise-art-frame" data-art-contract="exercise-3x2">${exerciseArt(id, true)}</div>
     <div class="technique-strip">${exercise.cues.map((cue, index) => `<article class="technique-step"><span>${index + 1}</span><p>${escapeHtml(cue)}</p></article>`).join("")}</div>
     <div class="technique-columns">
       <div class="instruction-box muscle-box"><h3>Работающие мышцы</h3><div class="muscle-list">${muscleGroups.map((name, index) => `<span><i class="muscle-dot muscle-${(index % 3) + 1}"></i>${escapeHtml(name)}</span>`).join("")}</div></div>
@@ -507,7 +511,7 @@ function openProfile() {
     <article class="profile-card glass-panel" style="margin-top:14px"><div class="form-grid"><div class="field"><label>Рост</label><input value="${state.profile.height} см" disabled></div><div class="field"><label>Вес</label><input value="${state.profile.weight} кг" disabled></div><div class="field"><label>Тренировок</label><input value="${state.profile.daysPerWeek} / нед." disabled></div><div class="field"><label>Длительность</label><input value="${state.profile.duration} мин" disabled></div></div></article>
     <article class="diagnostic-card">
       <div class="diagnostic-card-head"><div><p class="eyebrow">App Audit</p><h3>Диагностика приложения</h3></div><span class="diagnostic-status">JSON</span></div>
-      <p>Проверит экраны, workout flow, layout/overflow, touch targets, CSS rules, exercise assets, PWA/runtime и целостность плана. Личные поля, сообщения и заметки в отчёт не попадают.</p>
+      <p>Проверит экраны, workout flow, layout/overflow, touch targets, visual aspect-ratio contracts, CSS rules, exercise assets, PWA/runtime и целостность плана. Личные поля, сообщения и заметки в отчёт не попадают.</p>
       <button class="primary-button wide" data-action="run-app-audit" ${state.auditRunning ? "disabled" : ""}>${state.auditRunning ? "Анализирую…" : "Проверить всё приложение"}</button>
       ${lastAudit ? `<div class="diagnostic-last"><span>Последний отчёт · ${escapeHtml(lastAuditText)}</span><button class="text-button" data-action="save-app-audit">Сохранить JSON</button></div>` : ""}
     </article>
@@ -573,6 +577,29 @@ function buildVisualTests(visualAudit) {
     status: weakSharpness.length ? "warn" : "pass",
     message: weakSharpness.length ? "Есть assets с резко меньшей детализацией относительно медианы библиотеки." : "Резких outlier'ов по относительной детализации не найдено.",
     details: { medianSharpness: visualAudit.medianSharpness, outliers: weakSharpness }
+  });
+
+  const expectedRatio = 3 / 2;
+  const ratioOutliers = visualAudit.visuals
+    .filter((visual) => visual.visualReady && Number.isFinite(visual.naturalAspectRatio))
+    .map((visual) => ({ ...visual, relativeError: Math.abs(visual.naturalAspectRatio - expectedRatio) / expectedRatio }))
+    .filter((visual) => visual.relativeError > 0.02)
+    .map((visual) => ({ exerciseId: visual.exerciseId, naturalAspectRatio: visual.naturalAspectRatio, relativeError: Number(visual.relativeError.toFixed(4)) }));
+  tests.push({
+    id: "visual.standard_aspect_ratio",
+    status: ratioOutliers.length ? "warn" : "pass",
+    message: ratioOutliers.length ? "Часть готовых exercise assets нарушает стандартный формат 3:2." : "Готовые exercise assets соответствуют стандартному формату 3:2.",
+    details: { expectedAspectRatio: expectedRatio, outliers: ratioOutliers }
+  });
+
+  const pendingVisuals = visualAudit.visuals
+    .filter((visual) => visual.visualReady === false)
+    .map((visual) => ({ exerciseId: visual.exerciseId, visualIssue: visual.visualIssue || "visual_pending" }));
+  tests.push({
+    id: "visual.library_readiness",
+    status: pendingVisuals.length ? "warn" : "pass",
+    message: pendingVisuals.length ? "В библиотеке есть упражнения с забракованным/не готовым media pack; они показываются только через безопасный placeholder." : "У всей библиотеки готовы visual packs.",
+    details: { pending: pendingVisuals }
   });
 
   return tests;
@@ -709,7 +736,7 @@ async function runFullAppAudit() {
     ];
 
     const report = {
-      schema: "forma.app-audit.v2",
+      schema: "forma.app-audit.v3",
       generatedAt: new Date().toISOString(),
       scope: "full-client-app",
       privacy: {
@@ -982,6 +1009,7 @@ document.addEventListener("click", async (event) => {
     renderWorkout();
     return;
   }
+  if (action === "exit-workout") { collectCurrentExercise(); return setScreen("plan"); }
   if (action === "home") return setScreen("home");
   if (action === "profile") return openProfile();
   if (action === "run-app-audit") {
@@ -1032,7 +1060,7 @@ window.addEventListener("beforeinstallprompt", (event) => {
 
 async function ensureCurrentPlanSchema() {
   if (!state.profile) return;
-  const valid = state.plan?.planRevision === 4 && state.plan?.cycleWeeks === 8 && Array.isArray(state.plan?.weeks) && state.plan.weeks.length === 8;
+  const valid = state.plan?.planRevision === 5 && state.plan?.cycleWeeks === 8 && Array.isArray(state.plan?.weeks) && state.plan.weeks.length === 8;
   if (valid) return;
   const previous = state.plan;
   const { plan } = await api("/api/plan/generate", { method: "POST", body: JSON.stringify({ profile: state.profile, cycleNumber: previous?.cycleNumber || 1 }) });

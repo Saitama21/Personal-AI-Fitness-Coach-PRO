@@ -10,6 +10,7 @@
   --line: rgba(25, 29, 26, 0.09);
   --line-strong: rgba(25, 29, 26, 0.14);
   --green: #176b35;
+  --exercise-art-ratio: 3 / 2;
   --green-2: #2e824a;
   --green-soft: #e6f0e7;
   --green-tint: #f0f5ef;
@@ -63,6 +64,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   padding: calc(var(--safe-top) + 6px) 16px calc(104px + var(--safe-bottom));
   isolation: isolate;
 }
+.app-shell.workout-mode { padding-bottom: calc(26px + var(--safe-bottom)); }
 
 .topbar { display: flex; align-items: center; justify-content: space-between; min-height: 52px; margin-bottom: 16px; }
 .topbar[hidden], .bottom-nav[hidden] { display: none !important; }
@@ -222,17 +224,23 @@ h3 { font-size: 16px; line-height: 1.2; }
 .analysis-state { display: inline-flex; padding: 7px 10px; border-radius: 999px; font-size: 10px; font-weight: 730; background: var(--green-soft); color: var(--green); margin-bottom: 12px; }
 
 /* Workout */
+.workout-screen { padding-bottom: 18px; }
 .workout-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
-.workout-header h1 { font-size: 31px; margin-bottom: 5px; }
+.workout-heading { min-width: 0; display: flex; align-items: flex-start; gap: 10px; }
+.workout-heading > div { min-width: 0; }
+.workout-exit-button { flex: 0 0 auto; width: 44px; height: 44px; display: grid; place-items: center; border: 1px solid var(--line); border-radius: 15px; background: var(--surface-strong); color: var(--text); font-size: 22px; line-height: 1; box-shadow: var(--shadow-card); }
+.workout-header h1 { font-size: 31px; margin-bottom: 5px; overflow-wrap: anywhere; }
 .timer-badge { padding: 10px 13px; border-radius: 15px; font-variant-numeric: tabular-nums; font-weight: 780; font-size: 12px; }
 .progress-track { height: 6px; border-radius: 99px; background: rgba(25,29,26,.08); overflow: hidden; margin: 13px 0 18px; }
 .progress-track span { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, var(--green), #4a9a62); transition: width .3s ease; }
 .current-exercise { padding: 15px; border-radius: var(--radius-xl); }
-.current-art { position: relative; width: 100%; height: 220px; border: 0; border-radius: 24px; overflow: hidden; background: linear-gradient(145deg, #eef3ed, #f7f0e8); margin-bottom: 14px; padding: 0; }
-.current-art .exercise-art-image { width: 100%; height: 100%; object-fit: contain; display: block; background: #f8f7f3; }
+.exercise-art-frame { width: 100%; aspect-ratio: var(--exercise-art-ratio); overflow: hidden; }
+.exercise-art-frame .exercise-art-image { width: 100%; height: 100%; object-fit: contain; object-position: center; display: block; }
+.current-art { position: relative; width: 100%; height: auto; aspect-ratio: var(--exercise-art-ratio); display: block; border: 0; border-radius: 24px; overflow: hidden; background: #f8f7f3; margin-bottom: 14px; padding: 0; }
+.current-art .exercise-art-image { background: #f8f7f3; }
 .art-hint { position: absolute; right: 12px; bottom: 12px; padding: 7px 10px; border-radius: 999px; background: rgba(22,24,23,.8); color: white; font-size: 9px; font-weight: 730; backdrop-filter: blur(12px); }
-.instruction-art { aspect-ratio: 3 / 2; overflow: hidden; border-radius: 22px; background: #f8f7f3; border: 1px solid var(--line); }
-.instruction-art .exercise-art-image { width: 100%; height: 100%; max-height: none; object-fit: contain; display: block; background: #f8f7f3; }
+.instruction-art { aspect-ratio: var(--exercise-art-ratio); overflow: hidden; border-radius: 22px; background: #f8f7f3; border: 1px solid var(--line); }
+.instruction-art .exercise-art-image { max-height: none; background: #f8f7f3; }
 .exercise-art-image { user-select: none; -webkit-user-drag: none; }
 .exercise-title-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .exercise-meta-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; color: var(--muted); font-size: 10px; }
@@ -309,7 +317,7 @@ h3 { font-size: 16px; line-height: 1.2; }
 .sheet-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
 .sheet-head h2 { margin-bottom: 4px; font-size: 25px; }
 .close-button { flex: 0 0 auto; width: 44px; height: 44px; border-radius: 14px; border: 1px solid var(--line); background: white; font-size: 20px; }
-.instruction-art { height: auto; aspect-ratio: 3 / 2; border-radius: 23px; overflow: hidden; background: linear-gradient(145deg, #edf3ec, #f7eee7); margin: 12px 0 14px; border: 1px solid rgba(25,29,26,.04); }
+.instruction-art { height: auto; aspect-ratio: var(--exercise-art-ratio); border-radius: 23px; overflow: hidden; background: linear-gradient(145deg, #edf3ec, #f7eee7); margin: 12px 0 14px; border: 1px solid rgba(25,29,26,.04); }
 .instruction-art svg { width: 100%; height: 100%; }
 .technique-strip { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 7px; margin-bottom: 12px; }
 .technique-step { min-width: 0; border-radius: 14px; background: white; border: 1px solid var(--line); padding: 8px 7px; }
@@ -403,7 +411,9 @@ h3 { font-size: 16px; line-height: 1.2; }
 .exercise-art-placeholder { width: 100%; height: 100%; min-height: 66px; display: grid; place-items: center; align-content: center; gap: 4px; background: linear-gradient(145deg, var(--green-tint), var(--surface-muted)); color: var(--green); }
 .exercise-art-placeholder span { font-size: 11px; font-weight: 850; letter-spacing: .12em; }
 .exercise-art-placeholder small { color: var(--muted); font-size: 7px; letter-spacing: .05em; }
-.exercise-art-placeholder.is-large { min-height: 220px; }
+.exercise-art-placeholder.is-large { min-height: 0; }
+.exercise-art-placeholder.is-large span { font-size: 15px; }
+.exercise-art-placeholder.is-large small { font-size: 11px; letter-spacing: .02em; }
 .analytics-empty { min-height: 145px; margin-top: 15px; display: grid; place-items: center; padding: 18px; border-radius: 20px; border: 1px dashed var(--line-strong); color: var(--muted); text-align: center; font-size: 11px; line-height: 1.45; }
 
 @media (prefers-color-scheme: dark) {
@@ -458,7 +468,7 @@ h3 { font-size: 16px; line-height: 1.2; }
   .constraint-banner b, .constraint-banner small, .workout-constraint { color: #e1a65d; }
 }
 
-/* v0.4.2 App Audit v2 */
+/* v0.4.3 App Audit v3 */
 .diagnostic-card { margin-top: 12px; padding: 16px; border-radius: 22px; background: var(--green-tint); border: 1px solid rgba(23,107,53,.12); }
 .diagnostic-card-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
 .diagnostic-card h3 { margin: 0; }

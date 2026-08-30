@@ -41,7 +41,7 @@ function normalizeEquipment(profile = {}) {
 }
 
 export function canPerformExercise(exercise, profile = {}) {
-  if (!exercise?.productionReady || !exercise.visualReady) return false;
+  if (!exercise?.productionReady) return false;
   const available = normalizeEquipment(profile);
   const options = Array.isArray(exercise.requiredEquipmentOptions) ? exercise.requiredEquipmentOptions : [["bodyweight"]];
   return options.some((option) => option.every((required) => available.has(required)));
@@ -77,8 +77,12 @@ function scoreCandidate(exercise, slot, context) {
     return score + (matches ? 9 : 0);
   }, 0);
   const reusePenalty = (context.usedInWeek.get(exercise.id) || 0) * 18;
+  // Visual readiness is a ranking preference, not a physiology constraint.
+  // A valid exercise may still be prescribed with an explicit placeholder when
+  // its media pack is quarantined, but ready visuals win when mechanics match.
+  const visualReadyBonus = exercise.visualReady ? 22 : 0;
   const seed = `${context.cycleNumber}:${context.variationBlock}:${context.sessionIndex}:${context.slotIndex}:${exercise.id}`;
-  return patternScore + muscleScore + roleScore(exercise, slot.role) + focusScore(exercise, context.profile.focus) - reusePenalty + hashUnit(seed) * 5;
+  return patternScore + muscleScore + roleScore(exercise, slot.role) + focusScore(exercise, context.profile.focus) + visualReadyBonus - reusePenalty + hashUnit(seed) * 5;
 }
 
 function chooseExercise(slot, context, selectedIds) {
@@ -352,7 +356,7 @@ function equipmentSuggestionsForPatterns(patterns, profile, level) {
   const available = normalizeEquipment(profile);
   const suggestions = new Set();
   for (const exercise of Object.values(exercises)) {
-    if (!exercise.productionReady || !exercise.visualReady || !levelAllows(exercise, level)) continue;
+    if (!exercise.productionReady || !levelAllows(exercise, level)) continue;
     if (!patterns.includes(exercise.movementPattern)) continue;
     for (const option of exercise.requiredEquipmentOptions || []) {
       const missing = option.filter((item) => !available.has(item));
