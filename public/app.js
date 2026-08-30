@@ -1,3 +1,5 @@
+import { addSetLog } from "./workout-state.js";
+
 const state = {
   screen: "home",
   onboardingStep: 1,
@@ -13,7 +15,7 @@ const state = {
   messages: [
     { role: "ai", text: "Привет. Я буду менять план по фактическим весам, повторениям и самочувствию. Что нужно скорректировать?" }
   ],
-  config: { aiEnabled: false, mode: "local", version: "0.1.0" },
+  config: { aiEnabled: false, mode: "local", version: "0.2.0" },
   deferredInstall: null
 };
 
@@ -28,7 +30,10 @@ const icons = {
   check: '<svg viewBox="0 0 24 24"><path d="m5 12 4 4L19 6"/></svg>',
   dumbbell: '<svg viewBox="0 0 24 24"><path d="M4 10v4M7 8v8M17 8v8M20 10v4M7 12h10"/></svg>',
   moon: '<svg viewBox="0 0 24 24"><path d="M20 15.5A8 8 0 0 1 8.5 4 8.5 8.5 0 1 0 20 15.5Z"/></svg>',
-  flame: '<svg viewBox="0 0 24 24"><path d="M12 22c4 0 7-3 7-7 0-3-1.5-5.5-4.5-8 .2 3-1.3 4.4-2.5 5.2.2-4-1.8-7.2-5-9.2.4 4-2 6.3-2 10 0 5 3 9 7 9Z"/></svg>'
+  flame: '<svg viewBox="0 0 24 24"><path d="M12 22c4 0 7-3 7-7 0-3-1.5-5.5-4.5-8 .2 3-1.3 4.4-2.5 5.2.2-4-1.8-7.2-5-9.2.4 4-2 6.3-2 10 0 5 3 9 7 9Z"/></svg>',
+  plus: '<svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>',
+  rotate: '<svg viewBox="0 0 24 24"><path d="M20 7v5h-5M4 17v-5h5"/><path d="M6.1 8.2A7 7 0 0 1 18.5 6M17.9 15.8A7 7 0 0 1 5.5 18"/></svg>',
+  spark: '<svg viewBox="0 0 24 24"><path d="m12 3 1.5 4.5L18 9l-4.5 1.5L12 15l-1.5-4.5L6 9l4.5-1.5L12 3Z"/><path d="m18.5 15 .8 2.2 2.2.8-2.2.8-.8 2.2-.8-2.2-2.2-.8 2.2-.8.8-2.2Z"/></svg>'
 };
 
 function escapeHtml(value = "") {
@@ -94,7 +99,16 @@ function exerciseArt(id, large = false) {
     reverse_lunge: { a: [73, 48, 73, 103, 57, 145, 51, 190, 90, 143, 115, 181], b: [226, 52, 226, 108, 207, 145, 187, 188, 247, 146, 282, 176], prop: "weight" },
     shoulder_press: { a: [76, 66, 76, 123, 57, 147, 59, 190, 96, 147, 95, 190], b: [226, 66, 226, 123, 207, 147, 209, 190, 246, 147, 245, 190], prop: "weight-up" },
     dead_bug: { a: [55, 142, 104, 137, 150, 153, 197, 137, 150, 153, 128, 190], b: [208, 143, 254, 138, 298, 151, 335, 130, 298, 151, 319, 187], prop: "mat" },
-    plank: { a: [54, 125, 104, 122, 154, 144, 201, 156, 154, 144, 117, 176], b: [207, 124, 253, 122, 299, 143, 342, 156, 299, 143, 267, 176], prop: "mat" }
+    plank: { a: [54, 125, 104, 122, 154, 144, 201, 156, 154, 144, 117, 176], b: [207, 124, 253, 122, 299, 143, 342, 156, 299, 143, 267, 176], prop: "mat" },
+    hip_thrust: { a: [58, 145, 107, 140, 151, 164, 200, 163, 151, 164, 133, 190], b: [210, 151, 254, 122, 292, 127, 330, 163, 292, 127, 273, 181], prop: "mat" },
+    split_squat: { a: [73, 48, 73, 103, 57, 145, 51, 190, 90, 143, 115, 181], b: [226, 52, 226, 108, 207, 145, 187, 188, 247, 146, 282, 176], prop: "weight" },
+    step_up: { a: [73, 48, 73, 103, 57, 145, 51, 190, 90, 143, 115, 181], b: [226, 52, 226, 108, 207, 145, 187, 188, 247, 146, 282, 176], prop: "bench" },
+    calf_raise: { a: [75, 48, 75, 98, 58, 140, 46, 188, 91, 140, 101, 187], b: [225, 57, 225, 104, 208, 140, 204, 181, 242, 140, 246, 181], prop: "weight" },
+    leg_abduction: { a: [75, 48, 75, 98, 58, 140, 46, 188, 91, 140, 101, 187], b: [225, 57, 225, 104, 200, 143, 183, 183, 249, 134, 289, 157], prop: "weight" },
+    back_extension: { a: [74, 52, 74, 109, 63, 151, 49, 193, 91, 151, 107, 193], b: [221, 53, 205, 105, 171, 127, 146, 176, 232, 132, 255, 180], prop: "bench" },
+    face_pull: { a: [78, 54, 78, 112, 55, 142, 57, 190, 101, 142, 99, 190], b: [226, 58, 226, 117, 199, 145, 200, 190, 252, 145, 251, 190], prop: "cable" },
+    rear_delt_fly: { a: [74, 52, 74, 109, 63, 151, 49, 193, 91, 151, 107, 193], b: [221, 53, 205, 105, 171, 127, 146, 176, 232, 132, 255, 180], prop: "weight" },
+    lateral_raise: { a: [76, 66, 76, 123, 57, 147, 59, 190, 96, 147, 95, 190], b: [226, 66, 226, 123, 191, 120, 205, 186, 261, 120, 247, 186], prop: "weight-up" }
   };
   const p = poses[id] || poses.goblet_squat;
   const view = large ? "0 0 380 230" : "0 0 380 230";
@@ -122,6 +136,40 @@ function exerciseArt(id, large = false) {
   </svg>`;
 }
 
+
+function rpeLabel(value) {
+  const labels = { 5: "Легко", 6: "Умеренно", 7: "Рабоче", 8: "Тяжело", 9: "Очень тяжело", 10: "Предел" };
+  return labels[Number(value)] || "Рабоче";
+}
+
+function painLabel(value) {
+  const n = Number(value);
+  if (n === 0) return "Нет боли";
+  if (n <= 3) return "Лёгкий дискомфорт";
+  if (n <= 5) return "Заметная боль";
+  return "Остановиться";
+}
+
+function rotationForWeek(plan, week = plan?.week || 1) {
+  if (!plan?.rotations?.length) return null;
+  const index = Math.min(plan.rotations.length - 1, Math.floor((Math.max(1, week) - 1) / (plan.rotationEveryWeeks || 2)));
+  return plan.rotations[index] || null;
+}
+
+function copySuggestedWeights(fromPlan, toPlan) {
+  const weights = new Map();
+  const collect = (workouts = []) => workouts.forEach((workout) => (workout.exercises || []).forEach((exercise) => {
+    if (exercise.suggestedWeight) weights.set(exercise.id, Math.max(weights.get(exercise.id) || 0, exercise.suggestedWeight));
+  }));
+  collect(fromPlan?.workouts);
+  (fromPlan?.rotations || []).forEach((rotation) => collect(rotation.workouts));
+  const apply = (workouts = []) => workouts.forEach((workout) => (workout.exercises || []).forEach((exercise) => {
+    if (weights.has(exercise.id)) exercise.suggestedWeight = weights.get(exercise.id);
+  }));
+  apply(toPlan?.workouts);
+  (toPlan?.rotations || []).forEach((rotation) => apply(rotation.workouts));
+}
+
 function getTodayWorkout() {
   return state.plan?.workouts?.find((workout) => workout.status === "today") || state.plan?.workouts?.[0] || null;
 }
@@ -131,6 +179,8 @@ function render() {
   root.style.animation = "none";
   requestAnimationFrame(() => { root.style.animation = ""; });
   if (!state.profile) return renderOnboarding();
+  $(".topbar").hidden = state.screen !== "home";
+  $(".bottom-nav").hidden = false;
   $$(".nav-item").forEach((button) => button.classList.toggle("active", button.dataset.screen === state.screen));
   if (state.screen === "home") renderHome();
   if (state.screen === "plan") renderPlan();
@@ -244,20 +294,35 @@ function renderHome() {
 
 function renderPlan() {
   const plan = state.plan;
-  root.innerHTML = `<section>
-    <p class="eyebrow">Цикл 1 · неделя ${plan.week}</p>
-    <h1>План тренировок</h1>
-    <p class="subtle">${escapeHtml(plan.summary)}</p>
-    <div class="week-strip">${[0,1,2,3,4,5,6].map((day) => {
-      const active = plan.workouts.some((workout) => workout.dayIndex === day);
-      return `<button class="day-chip ${active ? "active" : ""}"><span>${["Пн","Вт","Ср","Чт","Пт","Сб","Вс"][day]}</span><b>${4 + day}</b>${active ? '<span class="dot"></span>' : ""}</button>`;
-    }).join("")}</div>
-    ${plan.workouts.map((workout, index) => `<article class="plan-card glass-panel">
-      <div class="plan-card-head"><div><p class="eyebrow">${workout.dayName} · ${workout.duration} минут</p><h3>${escapeHtml(workout.title)}</h3><p class="subtle">${escapeHtml(workout.focus)}</p></div><span class="count">${workout.exercises.length}</span></div>
-      <div class="exercise-mini-list">${workout.exercises.map((exercise) => `<button class="exercise-mini text-button" data-exercise="${exercise.id}"><span class="index">${exercise.order}</span><div><b>${escapeHtml(exercise.name)}</b><small>${exercise.sets} × ${escapeHtml(exercise.target)} · ${exercise.suggestedWeight ? exercise.suggestedWeight + " " + exercise.unit : "свой вес"}</small></div>${icons.arrow}</button>`).join("")}</div>
-      ${index === 0 ? `<button class="primary-button wide" style="margin-top:15px" data-action="start-workout">${icons.play} Начать эту тренировку</button>` : ""}
+  const currentRotation = rotationForWeek(plan);
+  const weekDays = ["Пн","Вт","Ср","Чт","Пт","Сб","Вс"];
+  const workoutByDay = new Map((plan.workouts || []).map((workout) => [workout.dayIndex, workout]));
+  root.innerHTML = `<section class="plan-screen">
+    <div class="plan-title-row">
+      <div><p class="eyebrow">Персональный цикл ${plan.cycleNumber || 1}</p><h1>План на ${plan.cycleWeeks || 8} недель</h1><p class="subtle">${escapeHtml(plan.summary)}</p></div>
+      <span class="cycle-pill">Неделя ${plan.week} из ${plan.cycleWeeks || 8}</span>
+    </div>
+
+    <div class="plan-policy-grid">
+      <article class="policy-card sport-card"><span class="policy-icon">${icons.rotate}</span><div><b>Смена упражнений<br>каждые ${plan.rotationEveryWeeks || 2} недели</b><small>${escapeHtml(currentRotation?.label || "Текущий блок")} · паттерны сохраняются</small></div></article>
+      <article class="policy-card sport-card"><span class="policy-icon warm">${icons.spark}</span><div><b>Полное обновление<br>каждые ${plan.cycleWeeks || 8} недель</b><small>Новый цикл с другими акцентами и вариациями</small></div></article>
+    </div>
+
+    <div class="section-head compact"><div><p class="eyebrow">Ближайшие тренировки</p><h2>Эта неделя</h2></div><span class="rotation-badge">Блок ${plan.rotationIndex + 1 || 1} / ${plan.rotationBlocks || 4}</span></div>
+
+    ${(plan.workouts || []).map((workout, index) => `<article class="plan-card premium-card ${workout.status === "today" ? "today" : ""}">
+      <div class="plan-card-head"><div><div class="day-title"><span class="day-badge">${workout.dayName}</span><h3>${escapeHtml(workout.title)}</h3><span class="duration-pill">${workout.duration} мин</span></div><p class="subtle">${escapeHtml(workout.focus)}</p></div><span class="workout-state ${workout.status}">${workout.status === "done" ? icons.check : workout.exercises.length}</span></div>
+      <div class="exercise-preview-row">${workout.exercises.slice(0,4).map((exercise) => `<button class="exercise-preview" data-exercise="${exercise.id}" aria-label="${escapeHtml(exercise.name)}"><span class="exercise-preview-art">${exerciseArt(exercise.id)}</span><b>${escapeHtml(exercise.name)}</b><small>${exercise.sets}×${escapeHtml(exercise.target)}</small></button>`).join("")}</div>
+      <div class="plan-card-footer"><span>${workout.exercises.length} упражнений</span>${workout.status === "today" ? `<button class="start-inline" data-action="start-workout">${icons.play} Начать</button>` : `<span class="focus-label">${escapeHtml(workout.focus.split(" · ")[0])}</span>`}</div>
     </article>`).join("")}
-    <article class="analysis-card glass-panel"><span class="analysis-state">Правило прогрессии</span><h3>План меняется по факту</h3><p class="subtle">После каждой тренировки учитываются завершённость подходов, RPE, боль, сон и энергия. Вес не повышается автоматически, если техника или восстановление просели.</p></article>
+
+    <div class="section-head compact"><div><p class="eyebrow">Расписание недели</p><h2>Ритм и восстановление</h2></div></div>
+    <div class="schedule-grid">${weekDays.map((dayName, dayIndex) => {
+      const workout = workoutByDay.get(dayIndex);
+      return `<div class="schedule-day ${workout ? "training" : "rest"}"><b>${dayName}</b><span>${workout ? escapeHtml(workout.title) : "Отдых"}</span></div>`;
+    }).join("")}</div>
+
+    <article class="analysis-card premium-card"><span class="analysis-state">Умная прогрессия</span><h3>План меняется по факту, а не по календарю</h3><p class="subtle">Вес, повторения и следующие нагрузки учитывают завершённость подходов, RPE, боль и восстановление. Смена упражнений каждые две недели не сбрасывает накопленную прогрессию.</p></article>
   </section>`;
 }
 
@@ -283,22 +348,24 @@ function initActiveWorkout() {
 function renderWorkout() {
   initActiveWorkout();
   if (!state.activeWorkout) {
-    root.innerHTML = `<div class="empty-state glass-panel"><div class="emoji">🌿</div><h2>Сегодня восстановление</h2><p class="subtle">В плане пока нет активной тренировки.</p></div>`;
+    root.innerHTML = `<div class="empty-state premium-card"><div class="emoji">🌿</div><h2>Сегодня восстановление</h2><p class="subtle">В плане пока нет активной тренировки.</p></div>`;
     return;
   }
   const workout = state.activeWorkout;
   const exercise = workout.exercises[state.workoutIndex];
-  const progress = ((state.workoutIndex + exercise.setLogs.filter((s) => s.done).length / exercise.setLogs.length) / workout.exercises.length) * 100;
-  root.innerHTML = `<section>
-    <div class="workout-header"><div><p class="eyebrow">Упражнение ${state.workoutIndex + 1} из ${workout.exercises.length}</p><h1>${escapeHtml(workout.title)}</h1></div><div class="timer-badge glass-panel" id="workoutTimer">${formatTimer()}</div></div>
-    <div class="progress-track"><span style="width:${progress}%"></span></div>
-    <article class="current-exercise glass-panel">
-      <div class="current-art">${exerciseArt(exercise.id, true)}</div>
-      <div class="exercise-title-row"><div><h2>${escapeHtml(exercise.name)}</h2><p class="subtle">${escapeHtml(exercise.muscle)} · отдых ${exercise.rest} сек.</p></div><button class="info-button" data-exercise="${exercise.id}">i</button></div>
+  const setCount = Math.max(1, exercise.setLogs.length);
+  const progress = ((state.workoutIndex + exercise.setLogs.filter((item) => item.done).length / setCount) / workout.exercises.length) * 100;
+  root.innerHTML = `<section class="workout-screen">
+    <div class="workout-header"><div><p class="eyebrow">${escapeHtml(workout.dayName)} · ${escapeHtml(workout.title)}</p><h1>${escapeHtml(exercise.name)}</h1><p class="subtle">Упражнение ${state.workoutIndex + 1} из ${workout.exercises.length}</p></div><div class="timer-badge premium-card" id="workoutTimer">${formatTimer()}</div></div>
+    <div class="progress-track" aria-label="Прогресс тренировки"><span style="width:${progress}%"></span></div>
+    <article class="current-exercise premium-card">
+      <button class="current-art" data-exercise="${exercise.id}" aria-label="Открыть технику ${escapeHtml(exercise.name)}">${exerciseArt(exercise.id, true)}<span class="art-hint">Техника</span></button>
+      <div class="exercise-title-row"><div><div class="exercise-meta-row"><span class="muscle-pill">${escapeHtml(exercise.muscle)}</span><span>Отдых ${exercise.rest} сек.</span></div></div><button class="info-button" data-exercise="${exercise.id}" aria-label="Техника упражнения">i</button></div>
       <div class="sets-grid"><span class="label">Сет</span><span class="label">Вес</span><span class="label">Повт.</span><span class="label">Готово</span>
         ${exercise.setLogs.map((set, index) => `<span class="set-index">${index + 1}</span><input class="set-input" inputmode="decimal" data-set-weight="${index}" value="${set.weight}" aria-label="Вес подхода ${index+1}"/><input class="set-input" inputmode="numeric" data-set-reps="${index}" value="${set.reps}" aria-label="Повторения подхода ${index+1}"/><button class="set-check ${set.done ? "done" : ""}" data-set-done="${index}" aria-label="Отметить подход">${icons.check}</button>`).join("")}
       </div>
-      <div class="form-grid" style="margin-top:17px"><div class="field"><label>Тяжесть, RPE</label><select id="rpe">${[5,6,7,8,9,10].map((v) => `<option ${exercise.rpe == v ? "selected" : ""}>${v}</option>`).join("")}</select></div><div class="field"><label>Боль, 0–10</label><select id="pain">${[0,1,2,3,4,5,6,7,8,9,10].map((v) => `<option ${exercise.pain == v ? "selected" : ""}>${v}</option>`).join("")}</select></div></div>
+      <button class="add-set-button" data-action="add-set">${icons.plus}<span>Добавить сет</span></button>
+      <div class="effort-grid"><div class="field"><label>Тяжесть, RPE</label><select id="rpe">${[5,6,7,8,9,10].map((value) => `<option value="${value}" ${exercise.rpe == value ? "selected" : ""}>${value} — ${rpeLabel(value)}</option>`).join("")}</select></div><div class="field"><label>Боль, 0–10</label><select id="pain">${[0,1,2,3,4,5,6,7,8,9,10].map((value) => `<option value="${value}" ${exercise.pain == value ? "selected" : ""}>${value} — ${painLabel(value)}</option>`).join("")}</select></div></div>
       <div class="workout-actions"><button class="secondary-button" data-action="prev-exercise" ${state.workoutIndex === 0 ? "disabled" : ""}>Назад</button><button class="primary-button" data-action="next-exercise">${state.workoutIndex === workout.exercises.length - 1 ? "Завершить" : "Следующее"} ${icons.arrow}</button></div>
     </article>
   </section>`;
@@ -334,7 +401,18 @@ function renderCoach() {
 function openExercise(id) {
   const exercise = state.exercises.find((item) => item.id === id);
   if (!exercise) return;
-  modalRoot.innerHTML = `<div class="modal-backdrop" data-close-modal><section class="bottom-sheet" role="dialog" aria-modal="true"><div class="sheet-handle"></div><div class="sheet-head"><div><p class="eyebrow">Техника упражнения</p><h2>${escapeHtml(exercise.name)}</h2><p class="subtle">${escapeHtml(exercise.muscle)}</p></div><button class="close-button" data-close-modal>×</button></div><div class="instruction-art">${exerciseArt(id, true)}</div><div class="instruction-grid"><div class="instruction-box good"><h3>Как выполнять</h3><ol>${exercise.cues.map((cue) => `<li>${escapeHtml(cue)}</li>`).join("")}</ol></div><div class="instruction-box bad"><h3>Так делать не надо</h3><ul>${exercise.avoid.map((cue) => `<li>${escapeHtml(cue)}</li>`).join("")}</ul></div><div class="instruction-box"><h3>Безопасная замена</h3><p class="subtle" style="margin:0">${escapeHtml(exercise.alternative)}</p></div></div><div class="safety-note"><b>Важно:</b> ${escapeHtml(exercise.contraindication)}</div></section></div>`;
+  const muscleGroups = exercise.muscleGroups?.length ? exercise.muscleGroups : [exercise.muscle];
+  modalRoot.innerHTML = `<div class="modal-backdrop" data-close-modal><section class="bottom-sheet technique-sheet" role="dialog" aria-modal="true" aria-label="Техника ${escapeHtml(exercise.name)}"><div class="sheet-handle"></div><div class="sheet-head"><div><p class="eyebrow">Техника выполнения</p><h2>${escapeHtml(exercise.name)}</h2><p class="subtle">${escapeHtml(exercise.muscle)}</p></div><button class="close-button" data-close-modal aria-label="Закрыть">×</button></div>
+    <div class="instruction-art">${exerciseArt(id, true)}</div>
+    <div class="technique-strip">${exercise.cues.map((cue, index) => `<article class="technique-step"><span>${index + 1}</span><p>${escapeHtml(cue)}</p></article>`).join("")}</div>
+    <div class="technique-columns">
+      <div class="instruction-box muscle-box"><h3>Работающие мышцы</h3><div class="muscle-list">${muscleGroups.map((name, index) => `<span><i class="muscle-dot muscle-${(index % 3) + 1}"></i>${escapeHtml(name)}</span>`).join("")}</div></div>
+      <div class="instruction-box recommendation-box"><h3>Рекомендации</h3><div class="recommendation-list"><span>◎ ${escapeHtml(exercise.defaultReps)}</span><span>◷ Отдых ${exercise.rest} сек.</span><span>↗ Вес — по технике и RPE</span></div></div>
+    </div>
+    <div class="instruction-box good"><h3>Ключевые моменты</h3><ul class="check-list">${exercise.cues.slice(0,5).map((cue) => `<li>${escapeHtml(cue)}</li>`).join("")}</ul></div>
+    <div class="instruction-box bad"><h3>Чего избегать</h3><ul>${exercise.avoid.map((cue) => `<li>${escapeHtml(cue)}</li>`).join("")}</ul></div>
+    <div class="safety-note"><b>Безопасная замена:</b> ${escapeHtml(exercise.alternative)}<br><br><b>Важно:</b> ${escapeHtml(exercise.contraindication)}</div>
+  </section></div>`;
 }
 
 function openProfile() {
@@ -377,22 +455,50 @@ function openReadinessCheck() {
 }
 
 function applyProgressionToPlan(analysis) {
+  const collections = [state.plan?.workouts || [], ...(state.plan?.rotations || []).map((rotation) => rotation.workouts || [])];
   for (const recommendation of analysis.recommendations || []) {
     if (!recommendation.nextWeight || recommendation.unit !== "кг") continue;
-    for (const workout of state.plan?.workouts || []) {
-      for (const exercise of workout.exercises || []) {
-        if (exercise.id === recommendation.exerciseId) {
-          exercise.suggestedWeight = recommendation.nextWeight;
+    for (const workouts of collections) {
+      for (const workout of workouts) {
+        for (const exercise of workout.exercises || []) {
+          if (exercise.id === recommendation.exerciseId) exercise.suggestedWeight = recommendation.nextWeight;
         }
       }
     }
   }
-  const currentIndex = state.plan?.workouts?.findIndex((workout) => workout.status === "today") ?? -1;
-  if (currentIndex >= 0) {
-    state.plan.workouts[currentIndex].status = "done";
-    const next = state.plan.workouts[currentIndex + 1] || state.plan.workouts[0];
-    if (next) next.status = "today";
+}
+
+function activatePlanWeek(week) {
+  const plan = state.plan;
+  const rotation = rotationForWeek(plan, week);
+  if (!rotation) return;
+  plan.week = week;
+  plan.rotationIndex = Math.floor((week - 1) / (plan.rotationEveryWeeks || 2));
+  plan.workouts = structuredClone(rotation.workouts);
+  plan.workouts.forEach((workout, index) => { workout.status = index === 0 ? "today" : "planned"; });
+}
+
+async function advancePlanSchedule() {
+  const plan = state.plan;
+  const currentIndex = plan?.workouts?.findIndex((workout) => workout.status === "today") ?? -1;
+  if (currentIndex < 0) return { cycleRefreshed: false };
+  plan.workouts[currentIndex].status = "done";
+  if (currentIndex < plan.workouts.length - 1) {
+    plan.workouts[currentIndex + 1].status = "today";
+    return { cycleRefreshed: false };
   }
+  if (plan.week < (plan.cycleWeeks || 8)) {
+    activatePlanWeek(plan.week + 1);
+    return { cycleRefreshed: false };
+  }
+  const previousPlan = structuredClone(plan);
+  const { plan: nextPlan } = await api("/api/plan/generate", {
+    method: "POST",
+    body: JSON.stringify({ profile: state.profile, cycleNumber: (plan.cycleNumber || 1) + 1 })
+  });
+  copySuggestedWeights(previousPlan, nextPlan);
+  state.plan = nextPlan;
+  return { cycleRefreshed: true };
 }
 
 async function finishWorkout(readiness = { sleep: 7, energy: 7, mood: 8 }, note = "") {
@@ -413,12 +519,13 @@ async function finishWorkout(readiness = { sleep: 7, energy: 7, mood: 8 }, note 
   try {
     const { analysis } = await api("/api/workout/analyze", { method: "POST", body: JSON.stringify({ entries, readiness }) });
     applyProgressionToPlan(analysis);
+    const scheduleUpdate = await advancePlanSchedule();
     state.analyses.push(analysis);
     state.logs.push({ createdAt: new Date().toISOString(), title: workout.title, duration: Math.max(60, (Date.now() - state.workoutStartedAt) / 1000), entries, readiness, note, analysisState: analysis.state });
     state.activeWorkout = null;
     state.workoutStartedAt = null;
     saveState();
-    modalRoot.innerHTML = `<div class="modal-backdrop"><section class="bottom-sheet"><div class="sheet-handle"></div><p class="eyebrow">Анализ завершён</p><h2>${escapeHtml(analysis.headline)}</h2><p class="subtle">${escapeHtml(analysis.summary)}</p><span class="analysis-state">План и следующие веса обновлены</span><div class="analysis-metrics"><div><b>${analysis.metrics.completion}%</b><small>выполнено</small></div><div><b>${analysis.metrics.avgRpe}</b><small>средний RPE</small></div><div><b>${analysis.metrics.readiness}%</b><small>готовность</small></div></div><div class="instruction-box"><h3>Следующая тренировка</h3>${analysis.recommendations.slice(0,3).map((rec) => `<div class="history-row"><div><b>${escapeHtml(rec.name)}</b><small>${escapeHtml(rec.note)}</small></div><span class="trend-up">${escapeHtml(rec.action)}${rec.nextWeight ? ` · ${rec.nextWeight} ${escapeHtml(rec.unit)}` : ""}</span></div>`).join("")}</div><div class="safety-note">${escapeHtml(analysis.safety)}</div><button class="primary-button wide" style="margin-top:13px" data-action="analysis-done">Готово</button></section></div>`;
+    modalRoot.innerHTML = `<div class="modal-backdrop"><section class="bottom-sheet"><div class="sheet-handle"></div><p class="eyebrow">Анализ завершён</p><h2>${escapeHtml(analysis.headline)}</h2><p class="subtle">${escapeHtml(analysis.summary)}</p><span class="analysis-state">${scheduleUpdate.cycleRefreshed ? "Создан новый 8-недельный цикл" : "План и следующие веса обновлены"}</span><div class="analysis-metrics"><div><b>${analysis.metrics.completion}%</b><small>выполнено</small></div><div><b>${analysis.metrics.avgRpe}</b><small>средний RPE</small></div><div><b>${analysis.metrics.readiness}%</b><small>готовность</small></div></div><div class="instruction-box"><h3>Следующая тренировка</h3>${analysis.recommendations.slice(0,3).map((rec) => `<div class="history-row"><div><b>${escapeHtml(rec.name)}</b><small>${escapeHtml(rec.note)}</small></div><span class="trend-up">${escapeHtml(rec.action)}${rec.nextWeight ? ` · ${rec.nextWeight} ${escapeHtml(rec.unit)}` : ""}</span></div>`).join("")}</div><div class="safety-note">${escapeHtml(analysis.safety)}</div><button class="primary-button wide" style="margin-top:13px" data-action="analysis-done">Готово</button></section></div>`;
   } catch (error) {
     toast(error.message);
   }
@@ -496,6 +603,15 @@ document.addEventListener("click", async (event) => {
   }
 
   const action = target.dataset.action;
+  if (action === "add-set") {
+    collectCurrentExercise();
+    const exercise = state.activeWorkout?.exercises?.[state.workoutIndex];
+    if (!exercise) return;
+    const result = addSetLog(exercise);
+    if (!result.added) return toast(result.reason === "max_sets" ? "Максимум 10 сетов на упражнение" : "Не удалось добавить сет");
+    renderWorkout();
+    return;
+  }
   if (action === "home") return setScreen("home");
   if (action === "profile") return openProfile();
   if (action === "plan") return setScreen("plan");
@@ -527,12 +643,26 @@ window.addEventListener("beforeinstallprompt", (event) => {
   state.deferredInstall = event;
 });
 
+
+async function ensureCurrentPlanSchema() {
+  if (!state.profile) return;
+  const valid = state.plan?.cycleWeeks === 8 && state.plan?.rotationEveryWeeks === 2 && Array.isArray(state.plan?.rotations) && state.plan.rotations.length === 4;
+  if (valid) return;
+  const previous = state.plan;
+  const { plan } = await api("/api/plan/generate", { method: "POST", body: JSON.stringify({ profile: state.profile, cycleNumber: previous?.cycleNumber || 1 }) });
+  if (previous) copySuggestedWeights(previous, plan);
+  state.plan = plan;
+  state.activeWorkout = null;
+  saveState();
+}
+
 async function boot() {
   loadState();
   try {
     const [config, library] = await Promise.all([api("/api/config"), api("/api/exercises")]);
     state.config = config;
     state.exercises = library.exercises;
+    await ensureCurrentPlanSchema();
   } catch (error) {
     console.warn(error);
   }

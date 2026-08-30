@@ -99,7 +99,7 @@ async function handleApi(req, res, url) {
   if (req.method === "GET" && url.pathname === "/api/config") {
     return sendJson(res, 200, {
       appName: process.env.APP_NAME || "FORMA AI",
-      version: "0.1.0",
+      version: "0.2.0",
       aiEnabled: Boolean(process.env.OPENAI_API_KEY),
       aiModel: process.env.OPENAI_MODEL || "gpt-5-mini",
       mode: process.env.OPENAI_API_KEY ? "hybrid" : "local"
@@ -114,7 +114,7 @@ async function handleApi(req, res, url) {
     const body = await readJson(req);
     const errors = validateProfile(body.profile);
     if (errors.length) return sendJson(res, 422, { error: "profile_invalid", details: errors });
-    return sendJson(res, 200, { plan: generatePlan(body.profile) });
+    return sendJson(res, 200, { plan: generatePlan(body.profile, { cycleNumber: body.cycleNumber }) });
   }
 
   if (req.method === "POST" && url.pathname === "/api/workout/analyze") {
@@ -146,8 +146,8 @@ async function serveStatic(req, res, url) {
     if (fileStat.isDirectory()) filePath = path.join(filePath, "index.html");
     const content = await readFile(filePath);
     const ext = path.extname(filePath).toLowerCase();
-    const cache = [".png", ".svg", ".css", ".js"].includes(ext)
-      ? "public, max-age=3600"
+    const cache = [".png", ".svg"].includes(ext)
+      ? "public, max-age=86400"
       : "no-cache";
     res.writeHead(200, {
       "Content-Type": mimeTypes[ext] || "application/octet-stream",
@@ -178,7 +178,7 @@ const server = http.createServer(async (req, res) => {
   if (req.method === "GET" && url.pathname === "/health") {
     return sendJson(res, 200, {
       status: "healthy",
-      version: "0.1.0",
+      version: "0.2.0",
       uptime: Math.round(process.uptime()),
       timestamp: new Date().toISOString()
     });
