@@ -21,6 +21,7 @@ const mimeTypes = {
   ".webmanifest": "application/manifest+json; charset=utf-8",
   ".svg": "image/svg+xml",
   ".png": "image/png",
+  ".webp": "image/webp",
   ".ico": "image/x-icon"
 };
 
@@ -99,7 +100,7 @@ async function handleApi(req, res, url) {
   if (req.method === "GET" && url.pathname === "/api/config") {
     return sendJson(res, 200, {
       appName: process.env.APP_NAME || "FORMA AI",
-      version: "0.2.0",
+      version: "0.3.0",
       aiEnabled: Boolean(process.env.OPENAI_API_KEY),
       aiModel: process.env.OPENAI_MODEL || "gpt-5-mini",
       mode: process.env.OPENAI_API_KEY ? "hybrid" : "local"
@@ -146,7 +147,7 @@ async function serveStatic(req, res, url) {
     if (fileStat.isDirectory()) filePath = path.join(filePath, "index.html");
     const content = await readFile(filePath);
     const ext = path.extname(filePath).toLowerCase();
-    const cache = [".png", ".svg"].includes(ext)
+    const cache = [".png", ".webp", ".svg"].includes(ext)
       ? "public, max-age=86400"
       : "no-cache";
     res.writeHead(200, {
@@ -178,7 +179,7 @@ const server = http.createServer(async (req, res) => {
   if (req.method === "GET" && url.pathname === "/health") {
     return sendJson(res, 200, {
       status: "healthy",
-      version: "0.2.0",
+      version: "0.3.0",
       uptime: Math.round(process.uptime()),
       timestamp: new Date().toISOString()
     });

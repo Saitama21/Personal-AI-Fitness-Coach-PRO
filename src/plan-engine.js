@@ -3,6 +3,7 @@ import { exercises } from "./exercises.js";
 const DAY_NAMES = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"];
 const CYCLE_WEEKS = 8;
 const ROTATION_WEEKS = 2;
+const PLAN_REVISION = 2;
 
 const goals = {
   strength: "Рост силы",
@@ -65,22 +66,22 @@ const rotationPools = {
     ["glute_bridge", "romanian_deadlift", "hip_thrust", "leg_abduction", "back_extension"]
   ],
   upper_pull: [
-    ["lat_pulldown", "dumbbell_row", "face_pull", "rear_delt_fly", "dead_bug"],
-    ["dumbbell_row", "lat_pulldown", "rear_delt_fly", "face_pull", "plank"],
-    ["lat_pulldown", "face_pull", "dumbbell_row", "rear_delt_fly", "dead_bug"],
-    ["dumbbell_row", "rear_delt_fly", "lat_pulldown", "face_pull", "plank"]
+    ["dumbbell_row", "face_pull", "rear_delt_fly", "dead_bug", "plank"],
+    ["rear_delt_fly", "dumbbell_row", "face_pull", "plank", "dead_bug"],
+    ["face_pull", "dumbbell_row", "rear_delt_fly", "dead_bug", "plank"],
+    ["dumbbell_row", "rear_delt_fly", "face_pull", "plank", "dead_bug"]
   ],
   upper_push: [
-    ["incline_pushup", "shoulder_press", "lateral_raise", "dead_bug", "plank"],
-    ["shoulder_press", "incline_pushup", "lateral_raise", "plank", "dead_bug"],
-    ["incline_pushup", "lateral_raise", "shoulder_press", "dead_bug", "plank"],
-    ["shoulder_press", "lateral_raise", "incline_pushup", "plank", "dead_bug"]
+    ["incline_pushup", "lateral_raise", "rear_delt_fly", "dead_bug", "plank"],
+    ["incline_pushup", "rear_delt_fly", "lateral_raise", "plank", "dead_bug"],
+    ["lateral_raise", "incline_pushup", "rear_delt_fly", "dead_bug", "plank"],
+    ["incline_pushup", "lateral_raise", "rear_delt_fly", "plank", "dead_bug"]
   ],
   full_body: [
     ["goblet_squat", "incline_pushup", "dumbbell_row", "romanian_deadlift", "dead_bug"],
-    ["split_squat", "shoulder_press", "lat_pulldown", "glute_bridge", "plank"],
+    ["split_squat", "incline_pushup", "rear_delt_fly", "glute_bridge", "plank"],
     ["step_up", "incline_pushup", "dumbbell_row", "hip_thrust", "dead_bug"],
-    ["reverse_lunge", "shoulder_press", "lat_pulldown", "romanian_deadlift", "plank"]
+    ["reverse_lunge", "incline_pushup", "face_pull", "romanian_deadlift", "plank"]
   ],
   conditioning_core: [
     ["step_up", "incline_pushup", "dead_bug", "calf_raise", "plank"],
@@ -240,6 +241,7 @@ export function generatePlan(profile = {}, options = {}) {
 
   return {
     id: `plan-c${cycleNumber}-${Date.now()}`,
+    planRevision: PLAN_REVISION,
     createdAt: new Date().toISOString(),
     goal,
     goalLabel: goals[goal],

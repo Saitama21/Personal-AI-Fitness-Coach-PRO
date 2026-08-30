@@ -15,7 +15,7 @@ const state = {
   messages: [
     { role: "ai", text: "Привет. Я буду менять план по фактическим весам, повторениям и самочувствию. Что нужно скорректировать?" }
   ],
-  config: { aiEnabled: false, mode: "local", version: "0.2.0" },
+  config: { aiEnabled: false, mode: "local", version: "0.3.0" },
   deferredInstall: null
 };
 
@@ -88,54 +88,32 @@ function formatTimer() {
   return `${String(Math.floor(seconds / 60)).padStart(2, "0")}:${String(seconds % 60).padStart(2, "0")}`;
 }
 
-function exerciseArt(id, large = false) {
-  const poses = {
-    goblet_squat: { a: [75, 48, 75, 98, 58, 140, 46, 188, 91, 140, 101, 187], b: [225, 67, 225, 116, 202, 137, 177, 175, 246, 138, 271, 175], prop: "weight" },
-    romanian_deadlift: { a: [74, 52, 74, 109, 63, 151, 49, 193, 91, 151, 107, 193], b: [221, 53, 205, 105, 171, 127, 146, 176, 232, 132, 255, 180], prop: "bar" },
-    incline_pushup: { a: [56, 108, 112, 101, 164, 133, 211, 149, 164, 133, 122, 163], b: [200, 104, 240, 117, 277, 147, 311, 157, 277, 147, 252, 176], prop: "bench" },
-    lat_pulldown: { a: [78, 54, 78, 112, 55, 142, 57, 190, 101, 142, 99, 190], b: [226, 58, 226, 117, 199, 145, 200, 190, 252, 145, 251, 190], prop: "cable" },
-    glute_bridge: { a: [58, 145, 107, 140, 151, 164, 200, 163, 151, 164, 133, 190], b: [210, 151, 254, 122, 292, 127, 330, 163, 292, 127, 273, 181], prop: "mat" },
-    dumbbell_row: { a: [64, 74, 87, 115, 63, 151, 49, 193, 98, 148, 117, 190], b: [218, 72, 236, 113, 204, 145, 190, 190, 249, 143, 267, 189], prop: "weight" },
-    reverse_lunge: { a: [73, 48, 73, 103, 57, 145, 51, 190, 90, 143, 115, 181], b: [226, 52, 226, 108, 207, 145, 187, 188, 247, 146, 282, 176], prop: "weight" },
-    shoulder_press: { a: [76, 66, 76, 123, 57, 147, 59, 190, 96, 147, 95, 190], b: [226, 66, 226, 123, 207, 147, 209, 190, 246, 147, 245, 190], prop: "weight-up" },
-    dead_bug: { a: [55, 142, 104, 137, 150, 153, 197, 137, 150, 153, 128, 190], b: [208, 143, 254, 138, 298, 151, 335, 130, 298, 151, 319, 187], prop: "mat" },
-    plank: { a: [54, 125, 104, 122, 154, 144, 201, 156, 154, 144, 117, 176], b: [207, 124, 253, 122, 299, 143, 342, 156, 299, 143, 267, 176], prop: "mat" },
-    hip_thrust: { a: [58, 145, 107, 140, 151, 164, 200, 163, 151, 164, 133, 190], b: [210, 151, 254, 122, 292, 127, 330, 163, 292, 127, 273, 181], prop: "mat" },
-    split_squat: { a: [73, 48, 73, 103, 57, 145, 51, 190, 90, 143, 115, 181], b: [226, 52, 226, 108, 207, 145, 187, 188, 247, 146, 282, 176], prop: "weight" },
-    step_up: { a: [73, 48, 73, 103, 57, 145, 51, 190, 90, 143, 115, 181], b: [226, 52, 226, 108, 207, 145, 187, 188, 247, 146, 282, 176], prop: "bench" },
-    calf_raise: { a: [75, 48, 75, 98, 58, 140, 46, 188, 91, 140, 101, 187], b: [225, 57, 225, 104, 208, 140, 204, 181, 242, 140, 246, 181], prop: "weight" },
-    leg_abduction: { a: [75, 48, 75, 98, 58, 140, 46, 188, 91, 140, 101, 187], b: [225, 57, 225, 104, 200, 143, 183, 183, 249, 134, 289, 157], prop: "weight" },
-    back_extension: { a: [74, 52, 74, 109, 63, 151, 49, 193, 91, 151, 107, 193], b: [221, 53, 205, 105, 171, 127, 146, 176, 232, 132, 255, 180], prop: "bench" },
-    face_pull: { a: [78, 54, 78, 112, 55, 142, 57, 190, 101, 142, 99, 190], b: [226, 58, 226, 117, 199, 145, 200, 190, 252, 145, 251, 190], prop: "cable" },
-    rear_delt_fly: { a: [74, 52, 74, 109, 63, 151, 49, 193, 91, 151, 107, 193], b: [221, 53, 205, 105, 171, 127, 146, 176, 232, 132, 255, 180], prop: "weight" },
-    lateral_raise: { a: [76, 66, 76, 123, 57, 147, 59, 190, 96, 147, 95, 190], b: [226, 66, 226, 123, 191, 120, 205, 186, 261, 120, 247, 186], prop: "weight-up" }
-  };
-  const p = poses[id] || poses.goblet_squat;
-  const view = large ? "0 0 380 230" : "0 0 380 230";
-  const person = (coords, opacity = 1) => {
-    const [hx, hy, sx, sy, lx1, ly1, lf1x, lf1y, rx1, ry1, rf1x, rf1y] = coords;
-    return `<g opacity="${opacity}">
-      <circle cx="${hx}" cy="${hy}" r="13" fill="rgba(255,255,255,.72)" stroke="rgba(38,39,42,.72)" stroke-width="4"/>
-      <path d="M${sx} ${sy-35} L${sx} ${sy} M${sx} ${sy-20} L${lx1} ${ly1-28} M${sx} ${sy-20} L${rx1} ${ry1-28} M${sx} ${sy} L${lx1} ${ly1} L${lf1x} ${lf1y} M${sx} ${sy} L${rx1} ${ry1} L${rf1x} ${rf1y}" fill="none" stroke="rgba(38,39,42,.78)" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
-    </g>`;
-  };
-  let props = '<path d="M25 202H355" stroke="rgba(38,39,42,.16)" stroke-width="3" stroke-linecap="round"/>';
-  if (p.prop === "weight" || p.prop === "weight-up") props += '<g fill="rgba(118,138,121,.8)"><rect x="36" y="112" width="26" height="9" rx="4"/><rect x="88" y="112" width="26" height="9" rx="4"/><rect x="189" y="112" width="26" height="9" rx="4"/><rect x="241" y="112" width="26" height="9" rx="4"/></g>';
-  if (p.prop === "bar") props += '<path d="M40 146H124M170 146H267" stroke="rgba(118,138,121,.9)" stroke-width="7" stroke-linecap="round"/>';
-  if (p.prop === "bench") props += '<path d="M105 131h85l19 60M243 139h85l16 52" stroke="rgba(118,138,121,.75)" stroke-width="8" stroke-linecap="round"/>';
-  if (p.prop === "cable") props += '<path d="M35 32h87M184 32h87M78 32v42M226 32v42" stroke="rgba(118,138,121,.72)" stroke-width="6" stroke-linecap="round"/>';
-  if (p.prop === "mat") props += '<path d="M35 194h150M197 194h150" stroke="rgba(118,138,121,.55)" stroke-width="9" stroke-linecap="round"/>';
-  return `<svg viewBox="${view}" role="img" aria-label="Схема выполнения упражнения">
-    <defs><linearGradient id="shine-${id}" x1="0" x2="1"><stop offset="0" stop-color="rgba(255,255,255,.42)"/><stop offset="1" stop-color="rgba(255,255,255,.04)"/></linearGradient></defs>
-    <rect width="380" height="230" fill="url(#shine-${id})"/>
-    <text x="75" y="27" text-anchor="middle" fill="rgba(38,39,42,.5)" font-size="10" font-weight="700" letter-spacing="2">СТАРТ</text>
-    <text x="226" y="27" text-anchor="middle" fill="rgba(38,39,42,.5)" font-size="10" font-weight="700" letter-spacing="2">ДВИЖЕНИЕ</text>
-    ${props}${person(p.a)}${person(p.b)}
-    <path d="M145 64h35" stroke="rgba(118,138,121,.8)" stroke-width="3" stroke-linecap="round"/>
-    <path d="m174 58 8 6-8 6" fill="none" stroke="rgba(118,138,121,.8)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
-  </svg>`;
-}
+const exerciseVisuals = Object.freeze({
+  goblet_squat: "/assets/exercises/goblet_squat.webp",
+  romanian_deadlift: "/assets/exercises/romanian_deadlift.webp",
+  incline_pushup: "/assets/exercises/incline_pushup.webp",
+  lat_pulldown: "/assets/exercises/lat_pulldown.webp",
+  glute_bridge: "/assets/exercises/glute_bridge.webp",
+  hip_thrust: "/assets/exercises/hip_thrust.webp",
+  reverse_lunge: "/assets/exercises/reverse_lunge.webp",
+  split_squat: "/assets/exercises/split_squat.webp",
+  step_up: "/assets/exercises/step_up.webp",
+  calf_raise: "/assets/exercises/calf_raise.webp",
+  leg_abduction: "/assets/exercises/leg_abduction.webp",
+  back_extension: "/assets/exercises/back_extension.webp",
+  dumbbell_row: "/assets/exercises/dumbbell_row.webp",
+  face_pull: "/assets/exercises/face_pull.webp",
+  rear_delt_fly: "/assets/exercises/rear_delt_fly.webp",
+  shoulder_press: "/assets/exercises/shoulder_press.webp",
+  lateral_raise: "/assets/exercises/lateral_raise.webp",
+  dead_bug: "/assets/exercises/dead_bug.webp",
+  plank: "/assets/exercises/plank.webp"
+});
 
+function exerciseArt(id, large = false) {
+  const src = exerciseVisuals[id] || exerciseVisuals.goblet_squat;
+  return `<img class="exercise-art-image${large ? " is-large" : ""}" src="${src}" alt="Техника выполнения упражнения" ${large ? 'loading="eager"' : 'loading="lazy"'} decoding="async" draggable="false">`;
+}
 
 function rpeLabel(value) {
   const labels = { 5: "Легко", 6: "Умеренно", 7: "Рабоче", 8: "Тяжело", 9: "Очень тяжело", 10: "Предел" };
@@ -646,7 +624,7 @@ window.addEventListener("beforeinstallprompt", (event) => {
 
 async function ensureCurrentPlanSchema() {
   if (!state.profile) return;
-  const valid = state.plan?.cycleWeeks === 8 && state.plan?.rotationEveryWeeks === 2 && Array.isArray(state.plan?.rotations) && state.plan.rotations.length === 4;
+  const valid = state.plan?.planRevision === 2 && state.plan?.cycleWeeks === 8 && state.plan?.rotationEveryWeeks === 2 && Array.isArray(state.plan?.rotations) && state.plan.rotations.length === 4;
   if (valid) return;
   const previous = state.plan;
   const { plan } = await api("/api/plan/generate", { method: "POST", body: JSON.stringify({ profile: state.profile, cycleNumber: previous?.cycleNumber || 1 }) });
