@@ -117,7 +117,7 @@ async function handleApi(req, res, url) {
   if (req.method === "GET" && url.pathname === "/api/config") {
     return sendJson(res, 200, {
       appName: process.env.APP_NAME || "FORMA AI",
-      version: "0.4.0",
+      version: "0.4.1",
       aiEnabled: Boolean(process.env.OPENAI_API_KEY),
       aiModel: process.env.OPENAI_MODEL || "gpt-5-mini",
       mode: process.env.OPENAI_API_KEY ? "hybrid" : "local"
@@ -202,7 +202,7 @@ const server = http.createServer(async (req, res) => {
   if (req.method === "GET" && url.pathname === "/health") {
     return sendJson(res, 200, {
       status: "healthy",
-      version: "0.4.0",
+      version: "0.4.1",
       uptime: Math.round(process.uptime()),
       timestamp: new Date().toISOString()
     });

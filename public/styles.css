@@ -445,3 +445,41 @@ h3 { font-size: 16px; line-height: 1.2; }
   .chevron { background: var(--surface-strong); }
   body::before { background: rgba(0,0,0,.06); }
 }
+
+/* v0.4.1 App Audit */
+.diagnostic-card { margin-top: 12px; padding: 16px; border-radius: 22px; background: var(--green-tint); border: 1px solid rgba(23,107,53,.12); }
+.diagnostic-card-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.diagnostic-card h3 { margin: 0; }
+.diagnostic-card p:not(.eyebrow) { margin: 10px 0 14px; color: var(--muted); font-size: 11px; line-height: 1.45; }
+.diagnostic-status { flex: 0 0 auto; padding: 6px 9px; border-radius: 999px; background: var(--surface-strong); color: var(--green); border: 1px solid var(--line); font-size: 9px; font-weight: 800; letter-spacing: .06em; }
+.diagnostic-last { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 10px; padding-top: 10px; border-top: 1px solid rgba(23,107,53,.1); }
+.diagnostic-last span { color: var(--muted); font-size: 9px; }
+.audit-runner-overlay { position: fixed; z-index: 160; inset: 0; display: grid; place-items: center; background: rgba(18,22,19,.24); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); pointer-events: all; }
+.audit-runner-card { width: min(calc(100% - 40px), 350px); min-height: 82px; padding: 16px 18px; border-radius: 24px; display: flex; align-items: center; gap: 14px; background: rgba(250,249,246,.96); border: 1px solid rgba(255,255,255,.9); box-shadow: var(--shadow-float); }
+.audit-runner-card b { display: block; font-size: 14px; }
+.audit-runner-card small { display: block; margin-top: 4px; color: var(--muted); font-size: 10px; line-height: 1.35; }
+.audit-spinner { flex: 0 0 auto; width: 28px; height: 28px; border-radius: 50%; border: 3px solid rgba(23,107,53,.14); border-top-color: var(--green); animation: auditSpin .8s linear infinite; }
+@keyframes auditSpin { to { transform: rotate(360deg); } }
+.audit-result-sheet { max-height: 92dvh; }
+.audit-summary-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 7px; margin: 16px 0; }
+.audit-summary-grid div { min-width: 0; padding: 11px 7px; border-radius: 16px; background: var(--surface-muted); border: 1px solid var(--line); text-align: center; }
+.audit-summary-grid b { display: block; font-size: 17px; }
+.audit-summary-grid small { display: block; margin-top: 3px; color: var(--muted); font-size: 8px; line-height: 1.2; }
+.audit-result-list { display: grid; gap: 8px; margin-bottom: 14px; }
+.audit-result-row { display: flex; align-items: flex-start; gap: 10px; padding: 11px 12px; border-radius: 16px; background: var(--surface-muted); border: 1px solid var(--line); }
+.audit-result-row > span { flex: 0 0 auto; width: 23px; height: 23px; display: grid; place-items: center; border-radius: 50%; font-weight: 850; }
+.audit-result-row b { display: block; font-size: 10px; overflow-wrap: anywhere; }
+.audit-result-row small { display: block; margin-top: 3px; color: var(--muted); font-size: 9px; line-height: 1.35; }
+.audit-result-row.fail > span { color: var(--danger); background: rgba(177,62,72,.09); }
+.audit-result-row.warn > span { color: #9c6a18; background: rgba(215,169,46,.12); }
+.audit-result-row.pass > span { color: var(--green); background: var(--green-soft); }
+
+@media (max-width: 350px) {
+  .audit-summary-grid { grid-template-columns: repeat(2, 1fr); }
+  .diagnostic-last { align-items: flex-start; flex-direction: column; }
+}
+
+@media (prefers-color-scheme: dark) {
+  .audit-runner-card { background: rgba(29,34,30,.97); border-color: rgba(255,255,255,.08); }
+  .diagnostic-card { background: var(--green-tint); border-color: rgba(101,187,125,.15); }
+}

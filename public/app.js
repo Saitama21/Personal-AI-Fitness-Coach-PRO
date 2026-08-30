@@ -1,4 +1,17 @@
 import { addSetLog } from "./workout-state.js";
+import {
+  installRuntimeDiagnostics,
+  captureDomSnapshot,
+  auditExerciseVisuals,
+  auditDataIntegrity,
+  runtimeDiagnosticsSnapshot,
+  collectEnvironment,
+  sanitizeAppState,
+  summarizeReport,
+  downloadAuditJson
+} from "./diagnostics.js";
+
+installRuntimeDiagnostics();
 
 const state = {
   screen: "home",
@@ -15,8 +28,10 @@ const state = {
   messages: [
     { role: "ai", text: "Привет. Я буду менять план по фактическим весам, повторениям и самочувствию. Что нужно скорректировать?" }
   ],
-  config: { aiEnabled: false, mode: "local", version: "0.4.0" },
-  deferredInstall: null
+  config: { aiEnabled: false, mode: "local", version: "0.4.1" },
+  deferredInstall: null,
+  auditRunning: false,
+  lastAuditReport: null
 };
 
 const $ = (selector, root = document) => root.querySelector(selector);
@@ -455,7 +470,245 @@ function openExercise(id) {
 }
 
 function openProfile() {
-  modalRoot.innerHTML = `<div class="modal-backdrop" data-close-modal><section class="bottom-sheet"><div class="sheet-handle"></div><div class="sheet-head"><div><p class="eyebrow">Профиль</p><h2>${escapeHtml(state.profile.name)}</h2></div><button class="close-button" data-close-modal>×</button></div><article class="profile-card glass-panel" style="margin-top:14px"><div class="form-grid"><div class="field"><label>Рост</label><input value="${state.profile.height} см" disabled></div><div class="field"><label>Вес</label><input value="${state.profile.weight} кг" disabled></div><div class="field"><label>Тренировок</label><input value="${state.profile.daysPerWeek} / нед." disabled></div><div class="field"><label>Длительность</label><input value="${state.profile.duration} мин" disabled></div></div></article><button class="secondary-button wide" style="width:100%;margin-top:12px" data-action="reset-app">Сбросить демо-данные</button><p class="subtle" style="margin:14px 4px 0">FORMA AI v${escapeHtml(state.config.version)} · данные хранятся локально на устройстве.</p></section></div>`;
+  const lastAudit = state.lastAuditReport;
+  const lastAuditText = lastAudit
+    ? new Date(lastAudit.generatedAt).toLocaleString("ru-RU", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })
+    : null;
+  modalRoot.innerHTML = `<div class="modal-backdrop" data-close-modal><section class="bottom-sheet"><div class="sheet-handle"></div><div class="sheet-head"><div><p class="eyebrow">Профиль</p><h2>${escapeHtml(state.profile.name)}</h2></div><button class="close-button" data-close-modal>×</button></div>
+    <article class="profile-card glass-panel" style="margin-top:14px"><div class="form-grid"><div class="field"><label>Рост</label><input value="${state.profile.height} см" disabled></div><div class="field"><label>Вес</label><input value="${state.profile.weight} кг" disabled></div><div class="field"><label>Тренировок</label><input value="${state.profile.daysPerWeek} / нед." disabled></div><div class="field"><label>Длительность</label><input value="${state.profile.duration} мин" disabled></div></div></article>
+    <article class="diagnostic-card">
+      <div class="diagnostic-card-head"><div><p class="eyebrow">App Audit</p><h3>Диагностика приложения</h3></div><span class="diagnostic-status">JSON</span></div>
+      <p>Проверит экраны, workout flow, layout/overflow, touch targets, CSS rules, exercise assets, PWA/runtime и целостность плана. Личные поля, сообщения и заметки в отчёт не попадают.</p>
+      <button class="primary-button wide" data-action="run-app-audit" ${state.auditRunning ? "disabled" : ""}>${state.auditRunning ? "Анализирую…" : "Проверить всё приложение"}</button>
+      ${lastAudit ? `<div class="diagnostic-last"><span>Последний отчёт · ${escapeHtml(lastAuditText)}</span><button class="text-button" data-action="save-app-audit">Сохранить JSON</button></div>` : ""}
+    </article>
+    <button class="secondary-button wide" style="width:100%;margin-top:12px" data-action="reset-app">Сбросить демо-данные</button>
+    <p class="subtle" style="margin:14px 4px 0">FORMA AI v${escapeHtml(state.config.version)} · данные хранятся локально на устройстве.</p>
+  </section></div>`;
+}
+
+function setAuditOverlay(message, detail = "") {
+  let overlay = document.querySelector("#auditRunnerOverlay");
+  if (!overlay) {
+    overlay = document.createElement("div");
+    overlay.id = "auditRunnerOverlay";
+    overlay.className = "audit-runner-overlay";
+    overlay.innerHTML = `<div class="audit-runner-card"><span class="audit-spinner" aria-hidden="true"></span><div><b id="auditRunnerMessage"></b><small id="auditRunnerDetail"></small></div></div>`;
+    document.body.append(overlay);
+  }
+  $("#auditRunnerMessage", overlay).textContent = message;
+  $("#auditRunnerDetail", overlay).textContent = detail;
+}
+
+function clearAuditOverlay() {
+  document.querySelector("#auditRunnerOverlay")?.remove();
+}
+
+function buildVisualTests(visualAudit) {
+  const tests = [];
+  const broken = visualAudit.visuals.filter((visual) => visual.visualReady && visual.response?.ok === false);
+  tests.push({
+    id: "visual.assets_resolve",
+    status: broken.length ? "fail" : "pass",
+    message: broken.length ? "Есть visual assets, которые не отдаются приложением." : "Все заявленные visual assets доступны по HTTP.",
+    details: { broken: broken.map((visual) => ({ exerciseId: visual.exerciseId, url: visual.url, response: visual.response })) }
+  });
+
+  const undecodable = visualAudit.visuals.filter((visual) => visual.visualReady && (!visual.naturalWidth || !visual.naturalHeight));
+  tests.push({
+    id: "visual.assets_decode",
+    status: undecodable.length ? "fail" : "pass",
+    message: undecodable.length ? "Часть visual assets отдаются, но не декодируются как изображения." : "Все готовые visual assets декодируются как изображения.",
+    details: { exerciseIds: undecodable.map((visual) => visual.exerciseId) }
+  });
+
+  tests.push({
+    id: "visual.identity_unique",
+    status: visualAudit.duplicates.length ? "fail" : "pass",
+    message: visualAudit.duplicates.length ? "Разные упражнения используют один и тот же файл visual asset." : "Побайтно одинаковых visual assets не найдено.",
+    details: { duplicateGroups: visualAudit.duplicates }
+  });
+
+  tests.push({
+    id: "visual.identity_similarity",
+    status: visualAudit.similarVisuals?.length ? "warn" : "pass",
+    message: visualAudit.similarVisuals?.length ? "Есть visual assets с одинаковой perceptual signature; их стоит проверить на визуальное дублирование." : "Подозрительных perceptual-дубликатов не найдено.",
+    details: { similarGroups: visualAudit.similarVisuals || [] }
+  });
+
+  const weakSharpness = visualAudit.visuals
+    .filter((visual) => Number.isFinite(visual.sharpnessVsMedian) && visual.sharpnessVsMedian < 0.35)
+    .map((visual) => ({ exerciseId: visual.exerciseId, sharpnessScore: visual.sharpnessScore, sharpnessVsMedian: visual.sharpnessVsMedian }));
+  tests.push({
+    id: "visual.relative_sharpness",
+    status: weakSharpness.length ? "warn" : "pass",
+    message: weakSharpness.length ? "Есть assets с резко меньшей детализацией относительно медианы библиотеки." : "Резких outlier'ов по относительной детализации не найдено.",
+    details: { medianSharpness: visualAudit.medianSharpness, outliers: weakSharpness }
+  });
+
+  return tests;
+}
+
+function buildRuntimeTests(runtime) {
+  const fatalCount = runtime.errors.length + runtime.rejections.length + runtime.resourceErrors.length;
+  return [{
+    id: "runtime.no_uncaught_errors",
+    status: fatalCount ? "fail" : runtime.console.some((entry) => entry.level === "error") ? "warn" : "pass",
+    message: fatalCount ? "Во время сессии зафиксированы uncaught/runtime/resource errors." : "Необработанных runtime ошибок не зафиксировано.",
+    details: {
+      windowErrors: runtime.errors.length,
+      unhandledRejections: runtime.rejections.length,
+      resourceErrors: runtime.resourceErrors.length,
+      consoleErrors: runtime.console.filter((entry) => entry.level === "error").length,
+      consoleWarnings: runtime.console.filter((entry) => entry.level === "warn").length
+    }
+  }];
+}
+
+function buildLayoutTests(snapshots) {
+  const issues = snapshots.flatMap((snapshot) => (snapshot.issues || []).map((entry) => ({ ...entry, snapshot: snapshot.label })));
+  const failed = issues.filter((entry) => entry.severity === "fail");
+  const warnings = issues.filter((entry) => entry.severity === "warn");
+  return [{
+    id: "layout.no_structural_failures",
+    status: failed.length ? "fail" : warnings.length ? "warn" : "pass",
+    message: failed.length ? "Найдены структурные layout failures." : warnings.length ? "Структурных падений нет, но есть layout/a11y предупреждения." : "Автоматические layout-проверки не нашли проблем.",
+    details: {
+      failedCount: failed.length,
+      warningCount: warnings.length,
+      failedByType: Object.fromEntries([...new Set(failed.map((entry) => entry.id))].map((id) => [id, failed.filter((entry) => entry.id === id).length])),
+      warningsByType: Object.fromEntries([...new Set(warnings.map((entry) => entry.id))].map((id) => [id, warnings.filter((entry) => entry.id === id).length]))
+    }
+  }];
+}
+
+function openAuditResult(report) {
+  const summary = report.summary;
+  const severity = summary.tests.failed || summary.layout.failed || summary.visuals.broken || summary.runtime.errors || summary.runtime.rejections || summary.runtime.resourceErrors
+    ? "fail"
+    : summary.tests.warnings || summary.layout.warnings || summary.visuals.duplicateGroups
+      ? "warn"
+      : "pass";
+  const labels = { pass: "Чисто", warn: "Есть замечания", fail: "Нужен разбор" };
+  modalRoot.innerHTML = `<div class="modal-backdrop" data-close-modal><section class="bottom-sheet audit-result-sheet"><div class="sheet-handle"></div>
+    <div class="sheet-head"><div><p class="eyebrow">App Audit завершён</p><h2>${labels[severity]}</h2><p class="subtle">Отчёт содержит DOM geometry, computed CSS, matched rules и технические данные без имени, сообщений и заметок.</p></div><button class="close-button" data-close-modal aria-label="Закрыть">×</button></div>
+    <div class="audit-summary-grid">
+      <div><b>${summary.layout.snapshots}</b><small>снимков DOM</small></div>
+      <div><b>${summary.layout.failed}</b><small>layout fail</small></div>
+      <div><b>${summary.layout.warnings}</b><small>warning</small></div>
+      <div><b>${summary.visuals.duplicateGroups}</b><small>visual duplicates</small></div>
+    </div>
+    <div class="audit-result-list">
+      ${(report.tests || []).filter((test) => test.status !== "pass").slice(0, 8).map((test) => `<div class="audit-result-row ${test.status}"><span>${test.status === "fail" ? "!" : "•"}</span><div><b>${escapeHtml(test.id)}</b><small>${escapeHtml(test.message)}</small></div></div>`).join("") || `<div class="audit-result-row pass"><span>✓</span><div><b>Автопроверки зелёные</b><small>JSON всё равно сохраняет geometry и asset metrics для ручного инженерного разбора.</small></div></div>`}
+    </div>
+    <button class="primary-button wide" data-action="save-app-audit">Сохранить JSON</button>
+    <button class="secondary-button wide" style="width:100%;margin-top:10px" data-close-modal>Закрыть</button>
+  </section></div>`;
+}
+
+async function runFullAppAudit() {
+  if (state.auditRunning) return;
+  state.auditRunning = true;
+  if (state.screen === "workout" && state.activeWorkout) collectCurrentExercise();
+
+  const original = {
+    screen: state.screen,
+    workoutIndex: state.workoutIndex,
+    activeWorkout: state.activeWorkout ? structuredClone(state.activeWorkout) : null,
+    workoutStartedAt: state.workoutStartedAt,
+    scrollY: window.scrollY
+  };
+  const snapshots = [];
+
+  try {
+    modalRoot.innerHTML = "";
+    setAuditOverlay("Анализ приложения", "Подготовка среды…");
+    const environment = await collectEnvironment(state.config);
+    const appState = sanitizeAppState(state);
+    const dataTests = auditDataIntegrity({ state, exercises: state.exercises });
+
+    const screens = ["home", "plan", "progress", "coach"];
+    for (let index = 0; index < screens.length; index += 1) {
+      const screen = screens[index];
+      setAuditOverlay("Проверяю интерфейс", `${index + 1}/${screens.length} · ${screen}`);
+      state.screen = screen;
+      render();
+      window.scrollTo({ top: 0, behavior: "instant" });
+      snapshots.push(await captureDomSnapshot(`screen:${screen}`, { screen }));
+    }
+
+    if (state.plan) {
+      state.screen = "workout";
+      if (!state.activeWorkout) initActiveWorkout();
+      const exercises = state.activeWorkout?.exercises || [];
+      for (let index = 0; index < exercises.length; index += 1) {
+        const exercise = exercises[index];
+        setAuditOverlay("Проверяю тренировку", `${index + 1}/${exercises.length} · ${exercise.name}`);
+        state.workoutIndex = index;
+        renderWorkout();
+        window.scrollTo({ top: 0, behavior: "instant" });
+        snapshots.push(await captureDomSnapshot(`workout:${exercise.id}`, {
+          screen: "workout",
+          exerciseId: exercise.id,
+          exerciseIndex: index,
+          exerciseCount: exercises.length
+        }));
+
+        openExercise(exercise.id);
+        snapshots.push(await captureDomSnapshot(`technique:${exercise.id}`, {
+          modal: "technique",
+          exerciseId: exercise.id
+        }, modalRoot));
+        modalRoot.innerHTML = "";
+      }
+    }
+
+    state.screen = "home";
+    render();
+    openProfile();
+    snapshots.push(await captureDomSnapshot("modal:profile", { modal: "profile" }, modalRoot));
+    modalRoot.innerHTML = "";
+
+    setAuditOverlay("Проверяю visual assets", `${state.exercises.length} упражнений…`);
+    const visualAudit = await auditExerciseVisuals(state.exercises);
+    const runtime = runtimeDiagnosticsSnapshot();
+    const tests = [
+      ...dataTests,
+      ...buildVisualTests(visualAudit),
+      ...buildLayoutTests(snapshots),
+      ...buildRuntimeTests(runtime)
+    ];
+
+    const report = {
+      schema: "forma.app-audit.v1",
+      generatedAt: new Date().toISOString(),
+      scope: "full-client-app",
+      privacy: {
+        redacted: true,
+        excluded: ["profile.name", "profile.age", "profile.height", "profile.weight", "messages", "workout notes", "set weights/reps"]
+      },
+      environment,
+      appState,
+      tests,
+      snapshots,
+      visualAudit,
+      runtime
+    };
+    report.summary = summarizeReport(report);
+    state.lastAuditReport = report;
+    return report;
+  } finally {
+    clearInterval(state.timerId);
+    state.screen = original.screen;
+    state.workoutIndex = original.workoutIndex;
+    state.activeWorkout = original.activeWorkout;
+    state.workoutStartedAt = original.workoutStartedAt;
+    state.auditRunning = false;
+    modalRoot.innerHTML = "";
+    render();
+    window.scrollTo({ top: original.scrollY, behavior: "instant" });
+    clearAuditOverlay();
+  }
 }
 
 function syncScheduleDraftFromForm() {
@@ -697,6 +950,22 @@ document.addEventListener("click", async (event) => {
   }
   if (action === "home") return setScreen("home");
   if (action === "profile") return openProfile();
+  if (action === "run-app-audit") {
+    try {
+      const report = await runFullAppAudit();
+      openAuditResult(report);
+    } catch (error) {
+      console.error("App audit failed", error);
+      toast(`Диагностика не завершена: ${error.message || "неизвестная ошибка"}`);
+    }
+    return;
+  }
+  if (action === "save-app-audit") {
+    if (!state.lastAuditReport) return toast("Сначала запусти диагностику");
+    const filename = downloadAuditJson(state.lastAuditReport);
+    toast(`Сохранён ${filename}`);
+    return;
+  }
   if (action === "plan") return setScreen("plan");
   if (action === "start-workout") return setScreen("workout");
   if (action === "prev-exercise") { collectCurrentExercise(); state.workoutIndex = Math.max(0, state.workoutIndex - 1); renderWorkout(); return; }
