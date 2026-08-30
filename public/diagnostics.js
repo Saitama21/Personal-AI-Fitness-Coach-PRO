@@ -205,6 +205,19 @@ function issue(id, severity, message, element = null, details = {}) {
   };
 }
 
+function visibleChildOverflow(element, axis) {
+  const parent = element.getBoundingClientRect();
+  let overflow = 0;
+  for (const child of [...element.children]) {
+    const style = getComputedStyle(child);
+    if (style.display === "none" || style.visibility === "hidden" || style.position === "fixed") continue;
+    const rect = child.getBoundingClientRect();
+    if (axis === "x") overflow = Math.max(overflow, parent.left - rect.left, rect.right - parent.right);
+    else overflow = Math.max(overflow, parent.top - rect.top, rect.bottom - parent.bottom);
+  }
+  return Math.max(0, overflow);
+}
+
 function scanLayoutIssues(scope = document) {
   const issues = [];
   const issueCounts = new Map();
@@ -226,7 +239,7 @@ function scanLayoutIssues(scope = document) {
     }));
   }
 
-  const candidates = [...scope.querySelectorAll("button, input, select, textarea, img, article, nav, header, main, section, [class*='card'], [class*='grid']")]
+  const candidates = [...scope.querySelectorAll("button, input, select, textarea, img, article, nav, header, main, section, [class*='card'], [class*='grid'], [class*='art'], [class*='sheet'], [class*='strip'], [class*='actions']")]
     .filter((element) => {
       if (element.closest?.("#auditRunnerOverlay")) return false;
       const style = getComputedStyle(element);
@@ -247,7 +260,8 @@ function scanLayoutIssues(scope = document) {
     }
 
     if (element.matches("button, input, select, textarea, [role='button']") && !element.disabled) {
-      if (rect.width < 44 || rect.height < 44) {
+      const touchEpsilon = 0.5;
+      if (rect.width + touchEpsilon < 44 || rect.height + touchEpsilon < 44) {
         addIssue(issue("a11y.touch_target.small", "warn", "Интерактивная область меньше рекомендуемых 44×44 CSS px.", element, {
           width: round(rect.width), height: round(rect.height)
         }));
@@ -255,15 +269,29 @@ function scanLayoutIssues(scope = document) {
     }
 
     if (element.scrollWidth > element.clientWidth + 2 && ["hidden", "clip"].includes(style.overflowX)) {
-      addIssue(issue("layout.content.clipped_x", "warn", "Содержимое элемента обрезается по горизонтали.", element, {
-        clientWidth: element.clientWidth, scrollWidth: element.scrollWidth, clippedPx: element.scrollWidth - element.clientWidth
-      }));
+      const childOverflowPx = visibleChildOverflow(element, "x");
+      // Ignore overflow created only by decorative pseudo-elements. Real child
+      // content must escape the clipping box to count as a layout defect.
+      if (childOverflowPx > 2) {
+        addIssue(issue("layout.content.clipped_x", "warn", "Содержимое элемента обрезается по горизонтали.", element, {
+          clientWidth: element.clientWidth,
+          scrollWidth: element.scrollWidth,
+          clippedPx: element.scrollWidth - element.clientWidth,
+          visibleChildOverflowPx: round(childOverflowPx)
+        }));
+      }
     }
 
     if (element.scrollHeight > element.clientHeight + 2 && ["hidden", "clip"].includes(style.overflowY) && element.tagName !== "IMG") {
-      addIssue(issue("layout.content.clipped_y", "warn", "Содержимое элемента обрезается по вертикали.", element, {
-        clientHeight: element.clientHeight, scrollHeight: element.scrollHeight, clippedPx: element.scrollHeight - element.clientHeight
-      }));
+      const childOverflowPx = visibleChildOverflow(element, "y");
+      if (childOverflowPx > 2) {
+        addIssue(issue("layout.content.clipped_y", "warn", "Содержимое элемента обрезается по вертикали.", element, {
+          clientHeight: element.clientHeight,
+          scrollHeight: element.scrollHeight,
+          clippedPx: element.scrollHeight - element.clientHeight,
+          visibleChildOverflowPx: round(childOverflowPx)
+        }));
+      }
     }
   }
 
@@ -550,9 +578,43 @@ export function auditDataIntegrity({ state, exercises }) {
     return tests;
   }
 
-  push("data.plan_periodization", Array.isArray(plan.weeks) && plan.weeks.length === 8 ? "pass" : "fail",
-    Array.isArray(plan.weeks) && plan.weeks.length === 8 ? "План содержит 8 недель." : "План не содержит ровно 8 недель.",
-    { weekCount: plan.weeks?.length || 0, phases: plan.weeks?.map((week) => week.phase) || [] });
+  const expectedPhases = ["adaptation", "adaptation", "volume", "volume", "intensity", "intensity", "peak", "deload"];
+  const phases = plan.weeks?.map((week) => week.phase) || [];
+  const phaseContractOk = Array.isArray(plan.weeks) && plan.weeks.length === 8 && expectedPhases.every((phase, index) => phases[index] === phase);
+  push("data.plan_periodization", phaseContractOk ? "pass" : "fail",
+    phaseContractOk ? "8-недельная фазовая структура корректна." : "Фазы 8-недельного цикла не соответствуют контракту.",
+    { weekCount: plan.weeks?.length || 0, phases, expectedPhases });
+
+  const prescriptions = (plan.weeks || []).map((week) => ({ week: week.week, phase: week.phase, ...(week.prescription || {}) }));
+  const w1 = prescriptions[0] || {};
+  const w4 = prescriptions[3] || {};
+  const w6 = prescriptions[5] || {};
+  const w8 = prescriptions[7] || {};
+  const stimulusChecks = {
+    volumeBuilds: Number(w4.totalSets) > Number(w1.totalSets),
+    intensityRises: Number(w6.avgRpeTarget) > Number(w1.avgRpeTarget),
+    repsShiftDown: Number(w6.avgRepMin) < Number(w1.avgRepMin),
+    deloadReducesSets: Number(w8.totalSets) < Number(w4.totalSets),
+    deloadReducesRpe: Number(w8.avgRpeTarget) < Number(w6.avgRpeTarget)
+  };
+  const effective = Object.values(stimulusChecks).every(Boolean);
+  push("data.plan_periodization_effective", effective ? "pass" : "fail",
+    effective ? "Фазы реально меняют объём, RPE и диапазон повторений." : "Названия фаз есть, но prescription не демонстрирует ожидаемое изменение стимула.",
+    { checks: stimulusChecks, prescriptions });
+
+  const coverage = plan.coverage;
+  const workoutCoverageGaps = (plan.weeks || []).flatMap((week) => (week.workouts || []).flatMap((workout) => (
+    workout.coverage?.status === "limited" ? [{ week: week.week, workoutId: workout.id, focusKey: workout.focusKey, missingRequiredSlots: workout.coverage.missingRequiredSlots || [] }] : []
+  )));
+  const silentCoverageFailure = workoutCoverageGaps.length > 0 && coverage?.status !== "limited";
+  push("data.plan_coverage_contract", !coverage || silentCoverageFailure ? "fail" : "pass",
+    !coverage ? "План не содержит coverage contract." : silentCoverageFailure ? "Есть незакрытые обязательные слоты, но plan.coverage не помечен limited." : "Coverage contract согласован с тренировками.",
+    { planCoverageStatus: coverage?.status || null, workoutCoverageGapCount: workoutCoverageGaps.length, workoutCoverageGaps });
+
+  const missingGroups = coverage?.missingGroups || [];
+  push("data.plan_movement_coverage", missingGroups.length ? "warn" : "pass",
+    missingGroups.length ? "Выбранное оборудование не позволяет закрыть все обязательные двигательные группы; ограничение явно сохранено в плане." : "Обязательные двигательные группы закрыты.",
+    { status: coverage?.status || null, requiredGroups: coverage?.requiredGroups || [], missingGroups });
 
   const planExercises = (plan.weeks || []).flatMap((week) => week.workouts || []).flatMap((workout) => workout.exercises || []);
   const missing = [...new Set(planExercises.filter((entry) => !byId.has(entry.id)).map((entry) => entry.id))];
@@ -647,18 +709,28 @@ export function sanitizeAppState(state) {
       week: plan.week,
       daysPerWeek: plan.daysPerWeek,
       schemeId: plan.schemeId,
+      coverage: plan.coverage || null,
       weeks: (plan.weeks || []).map((week) => ({
         week: week.week,
         phase: week.phase,
         volumeMultiplier: week.volumeMultiplier,
         intensityMultiplier: week.intensityMultiplier,
         rpeTarget: week.rpeTarget,
+        prescription: week.prescription || null,
         workouts: (week.workouts || []).map((workout) => ({
           id: workout.id,
           dayIndex: workout.dayIndex,
           focusKey: workout.focusKey,
-          exerciseIds: (workout.exercises || []).map((exercise) => exercise.id),
-          setCounts: (workout.exercises || []).map((exercise) => exercise.sets)
+          coverage: workout.coverage || null,
+          exercises: (workout.exercises || []).map((exercise) => ({
+            id: exercise.id,
+            movementPattern: exercise.movementPattern,
+            role: exercise.role,
+            sets: exercise.sets,
+            repRange: exercise.repRange,
+            rest: exercise.rest,
+            rpeTarget: exercise.rpeTarget
+          }))
         }))
       }))
     } : null,

@@ -82,17 +82,14 @@ function scoreCandidate(exercise, slot, context) {
 }
 
 function chooseExercise(slot, context, selectedIds) {
-  const all = Object.values(exercises).filter((exercise) => (
+  // Pattern is a hard constraint. Muscle targets only rank candidates inside the
+  // requested pattern; they never justify substituting a different movement.
+  const pool = Object.values(exercises).filter((exercise) => (
     !selectedIds.has(exercise.id)
+    && slot.patterns.includes(exercise.movementPattern)
     && canPerformExercise(exercise, context.profile)
     && levelAllows(exercise, context.level)
   ));
-
-  const exact = all.filter((exercise) => slot.patterns.includes(exercise.movementPattern));
-  const targetPool = all.filter((exercise) => (slot.targets || []).some((target) => (
-    exercise.primaryMuscle === target || (exercise.muscleGroups || []).includes(target)
-  )));
-  const pool = exact.length ? exact : targetPool;
   if (!pool.length) return null;
 
   return pool
@@ -101,12 +98,61 @@ function chooseExercise(slot, context, selectedIds) {
 }
 
 function baseSets(level, goal, role) {
-  const levelBase = level === "advanced" ? 4 : level === "intermediate" ? 3 : 2;
-  let sets = levelBase;
-  if (role === "accessory" || role === "core") sets = Math.max(2, levelBase - 1);
+  const primary = level === "advanced" ? 4 : level === "intermediate" ? 3 : 2;
+  let sets = role === "primary" ? primary : Math.max(2, primary - 1);
   if (goal === "strength" && role === "primary") sets += 1;
   if (goal === "return") sets = Math.min(sets, 2);
   return clamp(sets, 2, 5);
+}
+
+function allocateSetBudget(chosen, level, goal, weekRule) {
+  const base = chosen.map(({ slot }) => baseSets(level, goal, slot.role));
+  const totalBase = base.reduce((sum, value) => sum + value, 0);
+  if (!totalBase) return [];
+
+  // Volume is prescribed at the workout level, then distributed across exercises.
+  // This avoids the large jumps caused by adding/removing a set on every exercise.
+  const targetTotal = clamp(Math.round(totalBase * weekRule.volume), chosen.length, chosen.length * 5);
+  const result = [...base];
+  const floorFor = (role) => (weekRule.phase === "deload" ? 1 : role === "primary" ? 2 : 1);
+  const addPriority = { primary: 0, secondary: 1, accessory: 2, core: 3 };
+  const removePriority = { accessory: 0, core: 1, secondary: 2, primary: 3 };
+
+  let current = result.reduce((sum, value) => sum + value, 0);
+  if (current < targetTotal) {
+    const order = chosen
+      .map(({ slot }, index) => ({ index, role: slot.role }))
+      .sort((a, b) => (addPriority[a.role] ?? 9) - (addPriority[b.role] ?? 9) || a.index - b.index);
+    while (current < targetTotal) {
+      let changed = false;
+      for (const item of order) {
+        if (current >= targetTotal) break;
+        if (result[item.index] >= 5) continue;
+        result[item.index] += 1;
+        current += 1;
+        changed = true;
+      }
+      if (!changed) break;
+    }
+  } else if (current > targetTotal) {
+    const order = chosen
+      .map(({ slot }, index) => ({ index, role: slot.role }))
+      .sort((a, b) => (removePriority[a.role] ?? 9) - (removePriority[b.role] ?? 9) || b.index - a.index);
+    while (current > targetTotal) {
+      let changed = false;
+      for (const item of order) {
+        if (current <= targetTotal) break;
+        const floor = floorFor(item.role);
+        if (result[item.index] <= floor) continue;
+        result[item.index] -= 1;
+        current -= 1;
+        changed = true;
+      }
+      if (!changed) break;
+    }
+  }
+
+  return result;
 }
 
 function repRangeFor(goal, exercise, phase) {
@@ -188,9 +234,17 @@ function buildWorkout({ sessionKey, sessionIndex, dayIndex, weekRule, profile, g
   const maxExercises = duration <= 35 ? 4 : 5;
   const selectedIds = new Set();
   const chosen = [];
+  const missingRequiredSlots = [];
+  const orderedSlots = [
+    ...blueprint.slots.map((slot, slotIndex) => ({ slot, slotIndex })).filter(({ slot }) => slot.required),
+    ...blueprint.slots.map((slot, slotIndex) => ({ slot, slotIndex })).filter(({ slot }) => !slot.required)
+  ];
 
-  for (let slotIndex = 0; slotIndex < blueprint.slots.length && chosen.length < maxExercises; slotIndex += 1) {
-    const slot = blueprint.slots[slotIndex];
+  for (const { slot, slotIndex } of orderedSlots) {
+    if (chosen.length >= maxExercises) {
+      if (slot.required) missingRequiredSlots.push({ slotIndex, role: slot.role, patterns: slot.patterns, targets: slot.targets, reason: "duration_capacity" });
+      continue;
+    }
     const exercise = chooseExercise(slot, {
       profile,
       goal,
@@ -201,22 +255,26 @@ function buildWorkout({ sessionKey, sessionIndex, dayIndex, weekRule, profile, g
       slotIndex,
       usedInWeek
     }, selectedIds);
-    if (!exercise) continue;
+    if (!exercise) {
+      if (slot.required) missingRequiredSlots.push({ slotIndex, role: slot.role, patterns: slot.patterns, targets: slot.targets, reason: "no_compatible_exercise" });
+      continue;
+    }
     selectedIds.add(exercise.id);
     usedInWeek.set(exercise.id, (usedInWeek.get(exercise.id) || 0) + 1);
-    chosen.push({ exercise, slot });
+    chosen.push({ exercise, slot, slotIndex });
   }
 
-  const exercisesForWorkout = chosen.map(({ exercise, slot }, exerciseIndex) => {
+  const setBudget = allocateSetBudget(chosen, level, goal, weekRule);
+  const exercisesForWorkout = chosen.map(({ exercise, slot, slotIndex }, exerciseIndex) => {
     const reps = repRangeFor(goal, exercise, weekRule.phase);
-    const rawSets = baseSets(level, goal, slot.role) * weekRule.volume;
-    const sets = clamp(Math.round(rawSets), weekRule.phase === "deload" ? 1 : 2, 5);
+    const sets = setBudget[exerciseIndex] ?? baseSets(level, goal, slot.role);
     const suggestedWeight = estimateStartingLoad({ ...profile, level }, exercise);
     const plannedWeight = exercise.unit === "кг" ? roundLoad(suggestedWeight * weekRule.intensity, exercise.exerciseType === "isolation" ? 0.5 : 1) : 0;
 
     return {
       id: exercise.id,
       order: exerciseIndex + 1,
+      slotIndex,
       name: exercise.name,
       muscle: exercise.muscle,
       movementPattern: exercise.movementPattern,
@@ -246,6 +304,12 @@ function buildWorkout({ sessionKey, sessionIndex, dayIndex, weekRule, profile, g
     phase: weekRule.phase,
     phaseLabel: weekRule.phaseLabel,
     status: "planned",
+    coverage: {
+      status: missingRequiredSlots.length ? "limited" : "complete",
+      requiredSlots: blueprint.slots.filter((slot) => slot.required).length,
+      resolvedRequiredSlots: blueprint.slots.filter((slot) => slot.required).length - missingRequiredSlots.length,
+      missingRequiredSlots
+    },
     exercises: exercisesForWorkout
   };
 }
@@ -266,6 +330,73 @@ function normalizeTrainingDays(profile, daysPerWeek) {
     if (!result.includes(day)) result.push(day);
   }
   return result.sort((a, b) => a - b);
+}
+
+const COVERAGE_GROUPS = Object.freeze({
+  knee_dominant: { label: "Коленно-доминантное движение", patterns: ["squat", "unilateral_knee_dominant"] },
+  hip_dominant: { label: "Тазобедренное разгибание / hinge", patterns: ["hip_hinge", "hip_extension"] },
+  push: { label: "Жим верхней части тела", patterns: ["horizontal_push", "vertical_push"] },
+  pull: { label: "Тяга верхней части тела", patterns: ["horizontal_pull", "vertical_pull"] },
+  posterior_shoulder: { label: "Лопатки / задняя дельта", patterns: ["scapular_pull", "horizontal_abduction"] },
+  core: { label: "Стабилизация корпуса", patterns: ["anti_extension", "anti_rotation", "anti_lateral_flexion"] }
+});
+
+function requiredCoverageGroups(profile = {}) {
+  if (profile.focus === "glutes") return ["knee_dominant", "hip_dominant"];
+  if (profile.focus === "upper") return ["push", "pull"];
+  if (profile.focus === "posture" || profile.goal === "posture") return ["pull", "posterior_shoulder", "core"];
+  return ["knee_dominant", "hip_dominant", "push", "pull"];
+}
+
+function equipmentSuggestionsForPatterns(patterns, profile, level) {
+  const available = normalizeEquipment(profile);
+  const suggestions = new Set();
+  for (const exercise of Object.values(exercises)) {
+    if (!exercise.productionReady || !exercise.visualReady || !levelAllows(exercise, level)) continue;
+    if (!patterns.includes(exercise.movementPattern)) continue;
+    for (const option of exercise.requiredEquipmentOptions || []) {
+      const missing = option.filter((item) => !available.has(item));
+      if (missing.length === 1) suggestions.add(missing[0]);
+    }
+  }
+  return [...suggestions].sort();
+}
+
+function summarizeWeekPrescription(workouts = []) {
+  const entries = workouts.flatMap((workout) => workout.exercises || []);
+  const totalSets = entries.reduce((sum, entry) => sum + Number(entry.sets || 0), 0);
+  const avgRpeTarget = entries.length ? entries.reduce((sum, entry) => sum + Number(entry.rpeTarget || 0), 0) / entries.length : 0;
+  const avgRest = entries.length ? entries.reduce((sum, entry) => sum + Number(entry.rest || 0), 0) / entries.length : 0;
+  const avgRepMin = entries.length ? entries.reduce((sum, entry) => sum + Number(entry.repRange?.min || 0), 0) / entries.length : 0;
+  const avgRepMax = entries.length ? entries.reduce((sum, entry) => sum + Number(entry.repRange?.max || 0), 0) / entries.length : 0;
+  return {
+    totalSets,
+    avgRpeTarget: Math.round(avgRpeTarget * 10) / 10,
+    avgRest: Math.round(avgRest),
+    avgRepMin: Math.round(avgRepMin * 10) / 10,
+    avgRepMax: Math.round(avgRepMax * 10) / 10
+  };
+}
+
+function evaluatePlanCoverage(weeks, profile, level) {
+  const requirements = requiredCoverageGroups(profile);
+  const weekly = weeks.map((week) => {
+    const patterns = new Set((week.workouts || []).flatMap((workout) => (workout.exercises || []).map((exercise) => exercise.movementPattern)));
+    const missingGroups = requirements.filter((groupId) => !COVERAGE_GROUPS[groupId].patterns.some((pattern) => patterns.has(pattern)));
+    const missingRequiredSlots = (week.workouts || []).flatMap((workout) => (workout.coverage?.missingRequiredSlots || []).map((slot) => ({ workoutId: workout.id, focusKey: workout.focusKey, ...slot })));
+    return { week: week.week, missingGroups, missingRequiredSlots };
+  });
+  const missingGroups = [...new Set(weekly.flatMap((week) => week.missingGroups))];
+  const missingRequiredSlots = weekly.flatMap((week) => week.missingRequiredSlots);
+  const suggestions = Object.fromEntries(missingGroups.map((groupId) => [groupId, equipmentSuggestionsForPatterns(COVERAGE_GROUPS[groupId].patterns, profile, level)]));
+  const status = missingGroups.length || missingRequiredSlots.length ? "limited" : "complete";
+  return {
+    status,
+    requiredGroups: requirements.map((id) => ({ id, ...COVERAGE_GROUPS[id] })),
+    missingGroups: missingGroups.map((id) => ({ id, ...COVERAGE_GROUPS[id], equipmentSuggestions: suggestions[id] })),
+    missingRequiredSlotCount: missingRequiredSlots.length,
+    weekly
+  };
 }
 
 export function generatePlan(profile = {}, options = {}) {
@@ -297,10 +428,12 @@ export function generatePlan(profile = {}, options = {}) {
       intensityMultiplier: weekRule.intensity,
       rpeTarget: weekRule.rpe,
       variationBlock: weekRule.variationBlock,
+      prescription: summarizeWeekPrescription(workouts),
       workouts
     };
   });
 
+  const coverage = evaluatePlanCoverage(weeks, profile, level);
   const workouts = clone(weeks[0].workouts);
   if (workouts[0]) workouts[0].status = "today";
 
@@ -316,9 +449,11 @@ export function generatePlan(profile = {}, options = {}) {
     cycleWeeks: CYCLE_WEEKS,
     week: 1,
     daysPerWeek,
+    coverage,
     summary: `${scheme.label} · ${daysPerWeek} тренировки в неделю · ${Number(profile.duration) || 45} минут · 8-недельная периодизация`,
     rules: [
-      "Конкретные упражнения выбираются по двигательному паттерну, целевым мышцам, уровню и доступному оборудованию.",
+      "Двигательный паттерн — жёсткое ограничение: упражнение не подменяется другим движением только из-за совпадения мышцы.",
+      "Если обязательный паттерн нельзя закрыть доступным оборудованием, план явно помечается как ограниченный, а не маскирует пропуск fallback-ом.",
       "Вариации меняются блоками каждые 2–3 недели; основные паттерны сохраняются для отслеживания прогресса.",
       "Объём и RPE меняются по фазам: адаптация → объём → интенсивность → тяжёлый блок → разгрузка.",
       "Double progression: сначала повторения в заданном диапазоне, затем небольшой шаг нагрузки.",

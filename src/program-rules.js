@@ -1,5 +1,5 @@
 export const CYCLE_WEEKS = 8;
-export const PLAN_REVISION = 3;
+export const PLAN_REVISION = 4;
 
 export const GOALS = Object.freeze({
   strength: { label: "Рост силы", baseRest: 150 },
@@ -23,7 +23,7 @@ export const WEEK_RULES = Object.freeze([
   { week: 8, phase: "deload", phaseLabel: "Разгрузка", volume: 0.52, intensity: 0.84, rpe: 6.5, variationBlock: 2 }
 ]);
 
-const slot = (role, patterns, targets = [], options = {}) => ({ role, patterns, targets, ...options });
+const slot = (role, patterns, targets = [], options = {}) => ({ role, patterns, targets, required: false, ...options });
 
 export const SESSION_LIBRARY = Object.freeze({
   full_a: {
@@ -31,10 +31,10 @@ export const SESSION_LIBRARY = Object.freeze({
     focus: "Присед · жим · тяга · задняя цепь",
     accent: "full",
     slots: [
-      slot("primary", ["squat"], ["Квадрицепсы", "Ягодичные"]),
-      slot("primary", ["horizontal_push", "vertical_push"], ["Грудные", "Передняя дельта"]),
-      slot("primary", ["horizontal_pull", "vertical_pull"], ["Широчайшие", "Ромбовидные"]),
-      slot("secondary", ["hip_hinge", "hip_extension"], ["Ягодичные", "Бицепс бедра"]),
+      slot("primary", ["squat", "unilateral_knee_dominant"], ["Квадрицепсы", "Ягодичные"], { required: true }),
+      slot("primary", ["horizontal_push", "vertical_push"], ["Грудные", "Передняя дельта"], { required: true }),
+      slot("primary", ["horizontal_pull", "vertical_pull"], ["Широчайшие", "Ромбовидные"], { required: true }),
+      slot("secondary", ["hip_hinge", "hip_extension"], ["Ягодичные", "Бицепс бедра"], { required: true }),
       slot("core", ["anti_extension"], ["Кор"])
     ]
   },
@@ -43,10 +43,10 @@ export const SESSION_LIBRARY = Object.freeze({
     focus: "Тяга · односторонняя работа · верх тела · кор",
     accent: "full",
     slots: [
-      slot("primary", ["hip_hinge", "hip_extension"], ["Ягодичные", "Бицепс бедра"]),
-      slot("primary", ["vertical_pull", "horizontal_pull"], ["Широчайшие"]),
-      slot("secondary", ["unilateral_knee_dominant"], ["Квадрицепсы", "Ягодичные"]),
-      slot("secondary", ["vertical_push", "horizontal_push"], ["Грудные", "Средняя дельта"]),
+      slot("primary", ["hip_hinge", "hip_extension"], ["Ягодичные", "Бицепс бедра"], { required: true }),
+      slot("primary", ["vertical_pull", "horizontal_pull"], ["Широчайшие"], { required: true }),
+      slot("secondary", ["unilateral_knee_dominant", "squat"], ["Квадрицепсы", "Ягодичные"], { required: true }),
+      slot("secondary", ["vertical_push", "horizontal_push"], ["Грудные", "Средняя дельта"], { required: true }),
       slot("core", ["anti_extension"], ["Кор"])
     ]
   },
@@ -55,10 +55,10 @@ export const SESSION_LIBRARY = Object.freeze({
     focus: "Односторонняя сила · плечи · спина · ягодицы",
     accent: "full",
     slots: [
-      slot("primary", ["unilateral_knee_dominant", "squat"], ["Квадрицепсы", "Ягодичные"]),
-      slot("primary", ["vertical_push", "horizontal_push"], ["Средняя дельта", "Грудные"]),
-      slot("primary", ["horizontal_pull", "vertical_pull"], ["Ромбовидные", "Широчайшие"]),
-      slot("secondary", ["hip_extension", "hip_hinge"], ["Ягодичные"]),
+      slot("primary", ["unilateral_knee_dominant", "squat"], ["Квадрицепсы", "Ягодичные"], { required: true }),
+      slot("primary", ["vertical_push", "horizontal_push"], ["Средняя дельта", "Грудные"], { required: true }),
+      slot("primary", ["horizontal_pull", "vertical_pull"], ["Ромбовидные", "Широчайшие"], { required: true }),
+      slot("secondary", ["hip_extension", "hip_hinge"], ["Ягодичные"], { required: true }),
       slot("accessory", ["hip_abduction", "plantar_flexion", "anti_extension"], ["Средняя ягодичная", "Икроножные", "Кор"])
     ]
   },
@@ -67,11 +67,11 @@ export const SESSION_LIBRARY = Object.freeze({
     focus: "Квадрицепс · задняя цепь · стабильность",
     accent: "legs",
     slots: [
-      slot("primary", ["squat"], ["Квадрицепсы"]),
-      slot("primary", ["hip_hinge"], ["Бицепс бедра", "Ягодичные"]),
-      slot("secondary", ["unilateral_knee_dominant"], ["Квадрицепсы", "Ягодичные"]),
+      slot("primary", ["squat", "unilateral_knee_dominant"], ["Квадрицепсы"], { required: true }),
+      slot("primary", ["hip_hinge", "hip_extension"], ["Бицепс бедра", "Ягодичные"], { required: true }),
+      slot("secondary", ["unilateral_knee_dominant", "squat"], ["Квадрицепсы", "Ягодичные"], { required: true }),
       slot("accessory", ["plantar_flexion", "hip_abduction"], ["Икроножные", "Средняя ягодичная"]),
-      slot("core", ["anti_extension"], ["Кор"])
+      slot("core", ["anti_extension"], ["Кор"], { required: true })
     ]
   },
   lower_volume: {
@@ -79,8 +79,8 @@ export const SESSION_LIBRARY = Object.freeze({
     focus: "Ягодицы · задняя цепь · односторонняя работа",
     accent: "glutes",
     slots: [
-      slot("primary", ["hip_extension"], ["Ягодичные"]),
-      slot("primary", ["hip_hinge"], ["Бицепс бедра", "Ягодичные"]),
+      slot("primary", ["hip_extension", "hip_hinge"], ["Ягодичные"], { required: true }),
+      slot("primary", ["hip_hinge", "hip_extension"], ["Бицепс бедра", "Ягодичные"]),
       slot("secondary", ["unilateral_knee_dominant", "squat"], ["Ягодичные", "Квадрицепсы"]),
       slot("accessory", ["hip_abduction"], ["Средняя ягодичная"]),
       slot("accessory", ["plantar_flexion", "anti_extension"], ["Икроножные", "Кор"])
@@ -91,11 +91,11 @@ export const SESSION_LIBRARY = Object.freeze({
     focus: "Широчайшие · лопатки · задняя дельта · кор",
     accent: "back",
     slots: [
-      slot("primary", ["vertical_pull", "horizontal_pull"], ["Широчайшие"]),
+      slot("primary", ["vertical_pull", "horizontal_pull"], ["Широчайшие"], { required: true }),
       slot("primary", ["horizontal_pull", "vertical_pull"], ["Ромбовидные"]),
       slot("accessory", ["horizontal_abduction", "scapular_pull"], ["Задняя дельта", "Трапеции"]),
-      slot("secondary", ["vertical_push", "horizontal_push"], ["Средняя дельта", "Грудные"]),
-      slot("core", ["anti_extension"], ["Кор"])
+      slot("secondary", ["vertical_push", "horizontal_push"], ["Средняя дельта", "Грудные"], { required: true }),
+      slot("core", ["anti_extension"], ["Кор"], { required: true })
     ]
   },
   upper_push: {
@@ -103,11 +103,11 @@ export const SESSION_LIBRARY = Object.freeze({
     focus: "Грудь · плечи · тяга для баланса · кор",
     accent: "push",
     slots: [
-      slot("primary", ["horizontal_push", "vertical_push"], ["Грудные"]),
+      slot("primary", ["horizontal_push", "vertical_push"], ["Грудные"], { required: true }),
       slot("primary", ["vertical_push", "horizontal_push"], ["Средняя дельта"]),
       slot("accessory", ["shoulder_abduction"], ["Средняя дельта"]),
-      slot("secondary", ["horizontal_pull", "vertical_pull"], ["Ромбовидные", "Широчайшие"]),
-      slot("core", ["anti_extension"], ["Кор"])
+      slot("secondary", ["horizontal_pull", "vertical_pull"], ["Ромбовидные", "Широчайшие"], { required: true }),
+      slot("core", ["anti_extension"], ["Кор"], { required: true })
     ]
   },
   conditioning: {
@@ -116,10 +116,10 @@ export const SESSION_LIBRARY = Object.freeze({
     accent: "core",
     slots: [
       slot("secondary", ["unilateral_knee_dominant", "squat"], ["Квадрицепсы"]),
-      slot("secondary", ["horizontal_push", "vertical_push"], ["Грудные"]),
-      slot("secondary", ["horizontal_pull", "vertical_pull"], ["Широчайшие"]),
+      slot("secondary", ["horizontal_push", "vertical_push"], ["Грудные"], { required: true }),
+      slot("secondary", ["horizontal_pull", "vertical_pull"], ["Широчайшие"], { required: true }),
       slot("accessory", ["plantar_flexion", "hip_abduction"], ["Икроножные", "Средняя ягодичная"]),
-      slot("core", ["anti_extension"], ["Кор"])
+      slot("core", ["anti_extension"], ["Кор"], { required: true })
     ]
   }
 });
@@ -127,6 +127,8 @@ export const SESSION_LIBRARY = Object.freeze({
 export const PROGRAM_SCHEMES = Object.freeze({
   full_body_2: { id: "full_body_2", label: "Full Body ×2", sessions: ["full_a", "full_b"] },
   full_body_3: { id: "full_body_3", label: "Full Body ×3", sessions: ["full_a", "full_b", "full_c"] },
+  posture_2: { id: "posture_2", label: "Full Body / Posture", sessions: ["full_a", "upper_pull"] },
+  posture_3: { id: "posture_3", label: "Full Body / Posture ×3", sessions: ["full_a", "upper_pull", "full_c"] },
   lower_upper_lower: { id: "lower_upper_lower", label: "Lower / Upper / Lower", sessions: ["lower_strength", "upper_pull", "lower_volume"] },
   upper_lower: { id: "upper_lower", label: "Upper / Lower", sessions: ["upper_push", "lower_strength", "upper_pull", "lower_volume"] },
   five_day: { id: "five_day", label: "Lower / Upper / Lower / Upper / Functional", sessions: ["lower_strength", "upper_pull", "lower_volume", "upper_push", "conditioning"] }
@@ -137,9 +139,13 @@ export function selectProgramScheme(profile = {}) {
   const goal = GOALS[profile.goal] ? profile.goal : "wellness";
   const focus = profile.focus || "balanced";
 
-  if (days === 2) return PROGRAM_SCHEMES.full_body_2;
+  if (days === 2) {
+    if (focus === "posture" || goal === "posture") return PROGRAM_SCHEMES.posture_2;
+    return PROGRAM_SCHEMES.full_body_2;
+  }
   if (days === 3) {
-    if (["muscle", "strength"].includes(goal) || focus === "glutes") return PROGRAM_SCHEMES.lower_upper_lower;
+    if (focus === "posture" || goal === "posture") return PROGRAM_SCHEMES.posture_3;
+    if (focus === "glutes") return PROGRAM_SCHEMES.lower_upper_lower;
     return PROGRAM_SCHEMES.full_body_3;
   }
   if (days === 4) return PROGRAM_SCHEMES.upper_lower;

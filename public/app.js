@@ -28,7 +28,7 @@ const state = {
   messages: [
     { role: "ai", text: "Привет. Я буду менять план по фактическим весам, повторениям и самочувствию. Что нужно скорректировать?" }
   ],
-  config: { aiEnabled: false, mode: "local", version: "0.4.1" },
+  config: { aiEnabled: false, mode: "local", version: "0.4.2" },
   deferredInstall: null,
   auditRunning: false,
   lastAuditReport: null
@@ -57,7 +57,7 @@ function escapeHtml(value = "") {
 
 function saveState() {
   localStorage.setItem("forma-ai-state", JSON.stringify({
-    schemaVersion: 2,
+    schemaVersion: 3,
     profile: state.profile,
     plan: state.plan,
     logs: state.logs,
@@ -146,6 +146,33 @@ function painLabel(value) {
 function phaseForWeek(plan, week = plan?.week || 1) {
   if (!plan?.weeks?.length) return null;
   return plan.weeks.find((item) => item.week === Math.max(1, Number(week) || 1)) || plan.weeks[0] || null;
+}
+
+const EQUIPMENT_LABELS = Object.freeze({
+  bodyweight: "собственный вес",
+  dumbbells: "гантели",
+  barbell: "штанга",
+  cable: "блочный тренажёр",
+  machine: "тренажёры"
+});
+
+function constraintSummary(plan = state.plan) {
+  const coverage = plan?.coverage;
+  if (!coverage || coverage.status !== "limited") return null;
+  const missing = (coverage.missingGroups || []).map((group) => group.label);
+  const suggestions = [...new Set((coverage.missingGroups || []).flatMap((group) => group.equipmentSuggestions || []))];
+  return {
+    missing,
+    suggestions,
+    missingText: missing.length ? missing.join(", ") : "часть обязательных двигательных паттернов",
+    suggestionText: suggestions.length ? suggestions.map((item) => EQUIPMENT_LABELS[item] || item).join(", ") : "добавить совместимое оборудование или упражнение в базу"
+  };
+}
+
+function constraintBanner(plan = state.plan) {
+  const summary = constraintSummary(plan);
+  if (!summary) return "";
+  return `<article class="constraint-banner" role="status"><b>План ограничен доступным оборудованием</b><p>Не закрыто: ${escapeHtml(summary.missingText)}. FORMA не заменяет отсутствующий паттерн упражнением на другую мышечную механику.</p><small>Чтобы закрыть пробел: ${escapeHtml(summary.suggestionText)}</small></article>`;
 }
 
 function copySuggestedWeights(fromPlan, toPlan) {
@@ -292,6 +319,7 @@ function renderHome() {
     <p class="eyebrow">${greeting}, ${escapeHtml(state.profile.name || "спортсмен")}</p>
     <h1>${workout ? "Сегодня работаем<br>по плану" : "Сегодня<br>восстановление"}</h1>
     <p class="subtle">${workout ? `${escapeHtml(workout.phaseLabel || "Рабочая неделя")} · выполняй заданный диапазон, а не гоняйся за весом.` : "Следующая нагрузка появится по расписанию цикла."}</p>
+    ${constraintBanner()}
 
     <article class="hero-card glass-panel">
       <div class="hero-top"><span class="goal-pill"><i></i>${escapeHtml(state.plan.goalLabel)}</span>
@@ -324,6 +352,7 @@ function renderPlan() {
       <div><p class="eyebrow">Персональный цикл ${plan.cycleNumber || 1}</p><h1>План на ${plan.cycleWeeks || 8} недель</h1><p class="subtle">${escapeHtml(plan.summary)}</p></div>
       <span class="cycle-pill">Неделя ${plan.week} из ${plan.cycleWeeks || 8}</span>
     </div>
+    ${constraintBanner(plan)}
 
     <div class="plan-policy-grid">
       <article class="policy-card sport-card"><span class="policy-icon">${icons.spark}</span><div><b>${escapeHtml(currentPhase?.phaseLabel || "Периодизация")}</b><small>RPE ${currentPhase?.rpeTarget ?? "—"} · объём ×${currentPhase?.volumeMultiplier ?? "—"}</small></div></article>
@@ -335,7 +364,7 @@ function renderPlan() {
     <div class="section-head compact"><div><p class="eyebrow">${escapeHtml(plan.schemeLabel || "Схема")}</p><h2>Эта неделя</h2></div><span class="rotation-badge">${escapeHtml(currentPhase?.phaseLabel || "Фаза")}</span></div>
 
     ${(plan.workouts || []).map((workout) => `<article class="plan-card premium-card ${workout.status === "today" ? "today" : ""}">
-      <div class="plan-card-head"><div><div class="day-title"><span class="day-badge">${workout.dayName}</span><h3>${escapeHtml(workout.title)}</h3><span class="duration-pill">${workout.duration} мин</span></div><p class="subtle">${escapeHtml(workout.focus)}</p></div><span class="workout-state ${workout.status}">${workout.status === "done" ? icons.check : workout.exercises.length}</span></div>
+      <div class="plan-card-head"><div><div class="day-title"><span class="day-badge">${workout.dayName}</span><h3>${escapeHtml(workout.title)}</h3><span class="duration-pill">${workout.duration} мин</span>${workout.coverage?.status === "limited" ? `<span class="workout-constraint">ограничено</span>` : ""}</div><p class="subtle">${escapeHtml(workout.focus)}</p></div><span class="workout-state ${workout.status}">${workout.status === "done" ? icons.check : workout.exercises.length}</span></div>
       <div class="exercise-preview-row">${workout.exercises.slice(0,4).map((exercise) => `<button class="exercise-preview" data-exercise="${exercise.id}" aria-label="${escapeHtml(exercise.name)}"><span class="exercise-preview-art">${exerciseArt(exercise.id)}</span><b>${escapeHtml(exercise.name)}</b><small>${exercise.sets}×${escapeHtml(exercise.target)} · RPE ${exercise.rpeTarget}</small></button>`).join("")}</div>
       <div class="plan-card-footer"><span>${workout.exercises.length} упражнений</span>${workout.status === "today" ? `<button class="start-inline" data-action="start-workout">${icons.play} Начать</button>` : `<span class="focus-label">${escapeHtml(workout.phaseLabel || "")}</span>`}</div>
     </article>`).join("")}
@@ -680,7 +709,7 @@ async function runFullAppAudit() {
     ];
 
     const report = {
-      schema: "forma.app-audit.v1",
+      schema: "forma.app-audit.v2",
       generatedAt: new Date().toISOString(),
       scope: "full-client-app",
       privacy: {
@@ -738,7 +767,12 @@ async function finishOnboarding() {
     state.onboardingStep = 1;
     $("#avatarText").textContent = (draft.name || "И").trim().charAt(0).toUpperCase();
     saveState();
-    toast("Персональный цикл готов");
+    if (plan.coverage?.status === "limited") {
+      const summary = constraintSummary(plan);
+      toast(`План создан с ограничением: ${summary?.missingText || "не все паттерны закрыты"}`);
+    } else {
+      toast("Персональный цикл готов");
+    }
     render();
   } catch (error) {
     toast(error.message);
@@ -998,7 +1032,7 @@ window.addEventListener("beforeinstallprompt", (event) => {
 
 async function ensureCurrentPlanSchema() {
   if (!state.profile) return;
-  const valid = state.plan?.planRevision === 3 && state.plan?.cycleWeeks === 8 && Array.isArray(state.plan?.weeks) && state.plan.weeks.length === 8;
+  const valid = state.plan?.planRevision === 4 && state.plan?.cycleWeeks === 8 && Array.isArray(state.plan?.weeks) && state.plan.weeks.length === 8;
   if (valid) return;
   const previous = state.plan;
   const { plan } = await api("/api/plan/generate", { method: "POST", body: JSON.stringify({ profile: state.profile, cycleNumber: previous?.cycleNumber || 1 }) });
