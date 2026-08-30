@@ -468,7 +468,7 @@ h3 { font-size: 16px; line-height: 1.2; }
   .constraint-banner b, .constraint-banner small, .workout-constraint { color: #e1a65d; }
 }
 
-/* v0.4.3 App Audit v3 */
+/* v0.4.3 App Audit v3 compatibility */
 .diagnostic-card { margin-top: 12px; padding: 16px; border-radius: 22px; background: var(--green-tint); border: 1px solid rgba(23,107,53,.12); }
 .diagnostic-card-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
 .diagnostic-card h3 { margin: 0; }
@@ -504,4 +504,74 @@ h3 { font-size: 16px; line-height: 1.2; }
 @media (prefers-color-scheme: dark) {
   .audit-runner-card { background: rgba(29,34,30,.97); border-color: rgba(255,255,255,.08); }
   .diagnostic-card { background: var(--green-tint); border-color: rgba(101,187,125,.15); }
+}
+
+/* v0.4.4 Workout Intelligence */
+.exercise-title-actions { display: flex; align-items: center; gap: 8px; }
+.replace-button { min-height: 44px; padding: 0 11px; border-radius: 14px; border: 1px solid var(--line); background: var(--surface-strong); color: var(--green); display: inline-flex; align-items: center; justify-content: center; gap: 6px; font-size: 10px; font-weight: 760; }
+.replace-button svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+
+.workout-insights { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-top: 12px; }
+.workout-insight { min-width: 0; padding: 11px 12px; border-radius: 16px; border: 1px solid var(--line); background: rgba(255,255,255,.62); }
+.workout-insight span { display: block; color: var(--muted); font-size: 8px; font-weight: 760; text-transform: uppercase; letter-spacing: .05em; margin-bottom: 5px; }
+.workout-insight b { display: block; font-size: 11px; line-height: 1.25; overflow-wrap: anywhere; }
+.workout-insight small { display: block; color: var(--muted); font-size: 8px; line-height: 1.35; margin-top: 4px; }
+.workout-insight.recommendation { grid-column: 1 / -1; background: var(--green-tint); border-color: rgba(23,107,53,.12); }
+.workout-insight.recommendation span, .workout-insight.recommendation b { color: var(--green); }
+
+.rest-timer { margin-top: 10px; padding: 11px 12px; border-radius: 17px; border: 1px solid rgba(23,107,53,.15); background: var(--green-tint); display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.rest-timer > div:first-child { min-width: 0; }
+.rest-timer span { display: block; color: var(--green); font-size: 9px; font-weight: 760; }
+.rest-timer b { display: block; margin-top: 2px; color: var(--green); font-size: 23px; font-variant-numeric: tabular-nums; letter-spacing: -.03em; }
+.rest-timer small { display: block; color: var(--muted); font-size: 8px; margin-top: 2px; line-height: 1.3; }
+.rest-timer.complete { background: rgba(75,145,88,.08); }
+.rest-timer-actions { display: flex; flex: 0 0 auto; gap: 6px; }
+.rest-timer-actions button { min-width: 44px; min-height: 44px; padding: 0 9px; border: 1px solid rgba(23,107,53,.18); border-radius: 13px; background: var(--surface-strong); color: var(--green); font-size: 9px; font-weight: 780; }
+
+.pain-guidance { margin-top: 10px; padding: 11px 12px; border-radius: 16px; border: 1px solid var(--line); display: grid; gap: 5px; }
+.pain-guidance b { font-size: 11px; }
+.pain-guidance span { color: var(--muted); font-size: 9px; line-height: 1.4; }
+.pain-guidance button { justify-self: start; min-height: 40px; margin-top: 3px; padding: 0 11px; border-radius: 12px; border: 1px solid currentColor; background: transparent; font-size: 9px; font-weight: 760; }
+.pain-guidance.mild { background: rgba(223,157,77,.08); color: #8a541f; }
+.pain-guidance.warning { background: rgba(223,127,56,.09); color: #8b4d1f; }
+.pain-guidance.danger { background: rgba(177,62,72,.08); color: #8b3f49; }
+
+.replacement-list { display: grid; gap: 8px; margin-top: 15px; }
+.replacement-option { width: 100%; min-height: 74px; padding: 8px; border: 1px solid var(--line); border-radius: 18px; background: var(--surface-strong); display: grid; grid-template-columns: 70px minmax(0,1fr) 28px; align-items: center; gap: 10px; text-align: left; }
+.replacement-art { width: 70px; aspect-ratio: 3 / 2; border-radius: 12px; overflow: hidden; background: var(--surface); display: block; }
+.replacement-art .exercise-art-image, .replacement-art .exercise-art-placeholder { width: 100%; height: 100%; }
+.replacement-option > span:nth-child(2) { min-width: 0; }
+.replacement-option b { display: block; font-size: 12px; }
+.replacement-option small { display: block; color: var(--muted); font-size: 8px; line-height: 1.35; margin-top: 4px; }
+.replacement-arrow { color: var(--green); font-size: 18px; text-align: center; }
+
+@media (max-width: 390px) {
+  .replace-button span { display: none; }
+  .replace-button { width: 44px; padding: 0; }
+  .workout-insights { grid-template-columns: 1fr; }
+  .workout-insight.recommendation { grid-column: auto; }
+  .rest-timer { align-items: flex-start; flex-direction: column; }
+  .rest-timer-actions { width: 100%; }
+  .rest-timer-actions button { flex: 1; }
+}
+
+@media (prefers-color-scheme: dark) {
+  .replace-button, .workout-insight, .rest-timer-actions button, .replacement-option { background: var(--surface-strong); }
+  .workout-insight.recommendation, .rest-timer { background: rgba(52,133,76,.12); border-color: rgba(88,179,111,.15); }
+  .pain-guidance.mild, .pain-guidance.warning { background: rgba(199,134,63,.11); color: #dfaa6b; }
+  .pain-guidance.danger { background: rgba(183,75,87,.12); color: #df8a94; }
+}
+
+.rest-setting-button { min-height: 44px; padding: 0 9px; border: 1px solid var(--line); border-radius: 13px; background: var(--surface-strong); color: var(--muted); font-size: 9px; font-weight: 700; }
+.set-management { display: grid; grid-template-columns: 1.25fr 1fr; gap: 8px; margin-top: 10px; }
+.set-management .add-set-button { margin-top: 0; min-height: 46px; }
+.remove-set-button { min-height: 46px; border: 1px solid var(--line); border-radius: 17px; background: var(--surface-strong); color: var(--muted); font-size: 9px; font-weight: 720; display: flex; align-items: center; justify-content: center; gap: 6px; }
+.remove-set-button span { font-size: 18px; line-height: 1; }
+.remove-set-button:disabled { opacity: .42; cursor: default; }
+.rest-presets { display: grid; grid-template-columns: repeat(4, 1fr); gap: 7px; margin-top: 10px; }
+.rest-presets button { min-height: 44px; border: 1px solid var(--line); border-radius: 13px; background: var(--surface-strong); color: var(--green); font-size: 10px; font-weight: 760; }
+
+@media (max-width: 350px) {
+  .set-management { grid-template-columns: 1fr; }
+  .rest-presets { grid-template-columns: repeat(2, 1fr); }
 }

@@ -1,4 +1,4 @@
-import { addSetLog } from "./workout-state.js";
+import { addSetLog, removeLastSetLog } from "./workout-state.js";
 import {
   installRuntimeDiagnostics,
   captureDomSnapshot,
@@ -22,13 +22,14 @@ const state = {
   activeWorkout: null,
   workoutIndex: 0,
   workoutStartedAt: null,
+  restTimer: null,
   timerId: null,
   logs: [],
   analyses: [],
   messages: [
     { role: "ai", text: "Привет. Я буду менять план по фактическим весам, повторениям и самочувствию. Что нужно скорректировать?" }
   ],
-  config: { aiEnabled: false, mode: "local", version: "0.4.3" },
+  config: { aiEnabled: false, mode: "local", version: "0.4.4" },
   deferredInstall: null,
   auditRunning: false,
   lastAuditReport: null
@@ -55,11 +56,29 @@ function escapeHtml(value = "") {
   return String(value).replace(/[&<>'"]/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" }[char]));
 }
 
+let saveStateTimer = null;
+
+function scheduleSaveState(delay = 180) {
+  clearTimeout(saveStateTimer);
+  saveStateTimer = setTimeout(() => {
+    saveStateTimer = null;
+    saveState();
+  }, delay);
+}
+
 function saveState() {
+  const activeSession = state.activeWorkout ? {
+    planId: state.plan?.id || null,
+    workout: state.activeWorkout,
+    workoutIndex: state.workoutIndex,
+    workoutStartedAt: state.workoutStartedAt,
+    restTimer: state.restTimer
+  } : null;
   localStorage.setItem("forma-ai-state", JSON.stringify({
-    schemaVersion: 3,
+    schemaVersion: 4,
     profile: state.profile,
     plan: state.plan,
+    activeSession,
     logs: state.logs,
     analyses: state.analyses,
     messages: state.messages.slice(-30)
@@ -90,6 +109,13 @@ function loadState() {
     if (!saved) return;
     state.profile = migrateProfile(saved.profile);
     state.plan = saved.plan || null;
+    const session = saved.activeSession;
+    if (session?.workout && session.planId && session.planId === state.plan?.id) {
+      state.activeWorkout = session.workout;
+      state.workoutIndex = Math.max(0, Math.min(Number(session.workoutIndex) || 0, Math.max(0, session.workout.exercises?.length - 1)));
+      state.workoutStartedAt = Number(session.workoutStartedAt) || Date.now();
+      state.restTimer = session.restTimer || null;
+    }
     state.logs = Array.isArray(saved.logs) ? saved.logs : [];
     state.analyses = Array.isArray(saved.analyses) ? saved.analyses : [];
     if (saved.messages?.length) state.messages = saved.messages;
@@ -143,6 +169,235 @@ function painLabel(value) {
   return "Остановиться";
 }
 
+function formatCountdown(seconds) {
+  const safe = Math.max(0, Math.ceil(Number(seconds) || 0));
+  return `${String(Math.floor(safe / 60)).padStart(2, "0")}:${String(safe % 60).padStart(2, "0")}`;
+}
+
+function restRemainingSeconds() {
+  if (!state.restTimer?.until) return 0;
+  return Math.max(0, Math.ceil((Number(state.restTimer.until) - Date.now()) / 1000));
+}
+
+function clearRestTimer({ persist = true } = {}) {
+  state.restTimer = null;
+  if (persist) saveState();
+}
+
+function startRestTimer(exercise, setIndex) {
+  const duration = Math.max(15, Number(exercise?.rest) || 60);
+  state.restTimer = {
+    exerciseId: exercise.id,
+    setIndex,
+    duration,
+    until: Date.now() + duration * 1000,
+    notified: false
+  };
+  saveState();
+}
+
+function restTimerMarkup(exercise) {
+  if (!state.restTimer || state.restTimer.exerciseId !== exercise.id) return "";
+  const remaining = restRemainingSeconds();
+  const complete = remaining <= 0;
+  return `<div class="rest-timer ${complete ? "complete" : ""}" id="restTimerPanel" role="status">
+    <div><span>${complete ? "Можно начинать" : "Отдых после подхода"}</span><b id="restTimerValue">${complete ? "Готово" : formatCountdown(remaining)}</b><small>${complete ? "Дыхание восстановилось — следующий подход по технике." : `План: ${exercise.rest} сек.`}</small></div>
+    <div class="rest-timer-actions"><button data-action="rest-add" aria-label="Добавить 15 секунд">+15</button><button data-action="rest-skip">${complete ? "Скрыть" : "Пропустить"}</button></div>
+  </div>`;
+}
+
+function updateRestTimerUi() {
+  const panel = $("#restTimerPanel");
+  if (!panel || !state.restTimer) return;
+  const value = $("#restTimerValue");
+  const remaining = restRemainingSeconds();
+  if (remaining > 0) {
+    if (value) value.textContent = formatCountdown(remaining);
+    return;
+  }
+  panel.classList.add("complete");
+  if (value) value.textContent = "Готово";
+  const label = panel.querySelector("span");
+  const detail = panel.querySelector("small");
+  const skip = panel.querySelector('[data-action="rest-skip"]');
+  if (label) label.textContent = "Можно начинать";
+  if (detail) detail.textContent = "Дыхание восстановилось — следующий подход по технике.";
+  if (skip) skip.textContent = "Скрыть";
+  if (!state.restTimer.notified) {
+    state.restTimer.notified = true;
+    if (navigator.vibrate) navigator.vibrate([120, 80, 120]);
+    saveState();
+  }
+}
+
+function lastExercisePerformance(exerciseId) {
+  for (let index = state.logs.length - 1; index >= 0; index -= 1) {
+    const log = state.logs[index];
+    const entry = (log.entries || []).find((item) => item.exerciseId === exerciseId);
+    if (entry) return { log, entry };
+  }
+  return null;
+}
+
+function lastExerciseRecommendation(exerciseId) {
+  for (let index = state.analyses.length - 1; index >= 0; index -= 1) {
+    const rec = (state.analyses[index].recommendations || []).find((item) => item.exerciseId === exerciseId);
+    if (rec) return rec;
+  }
+  return null;
+}
+
+function performanceSummary(entry) {
+  const sets = (entry?.sets || []).filter((set) => set.done !== false);
+  if (!sets.length) return "нет завершённых подходов";
+  const reps = sets.map((set) => Number(set.reps) || 0);
+  if (entry?.unit === "сек.") return `${reps.join(" / ")} сек.`;
+  const weights = sets.map((set) => Number(set.weight) || 0);
+  const positiveWeights = weights.filter((value) => value > 0);
+  if (positiveWeights.length && new Set(positiveWeights).size === 1) {
+    return `${positiveWeights[0]} кг × ${reps.join(" / ")}`;
+  }
+  if (positiveWeights.length) return sets.map((set) => `${Number(set.weight) || 0}×${Number(set.reps) || 0}`).join(" · ");
+  return `${reps.join(" / ")} повт.`;
+}
+
+function workoutInsightMarkup(exercise) {
+  const previous = lastExercisePerformance(exercise.id);
+  const recommendation = lastExerciseRecommendation(exercise.id);
+  const currentTarget = `${exercise.setLogs.length}×${exercise.target} · RPE ${exercise.rpeTarget}`;
+  const previousDate = previous ? new Date(previous.log.createdAt).toLocaleDateString("ru-RU", { day: "2-digit", month: "short" }) : null;
+  return `<div class="workout-insights">
+    <div class="workout-insight"><span>Сегодня</span><b>${escapeHtml(currentTarget)}</b><small>${exercise.plannedWeight ? `Стартовый ориентир ${exercise.plannedWeight} ${escapeHtml(exercise.unit)}` : "Нагрузка по технике и целевому RPE"}</small></div>
+    <div class="workout-insight"><span>Прошлый раз</span><b>${previous ? escapeHtml(performanceSummary(previous.entry)) : "Первое выполнение"}</b><small>${previous ? `${previousDate} · RPE ${previous.entry.rpe ?? "—"}${Number(previous.entry.pain) > 0 ? ` · боль ${previous.entry.pain}/10` : ""}` : "FORMA сохранит фактические подходы после тренировки"}</small></div>
+    ${recommendation ? `<div class="workout-insight recommendation"><span>Следующий шаг</span><b>${escapeHtml(recommendation.action)}</b><small>${escapeHtml(recommendation.note)}</small></div>` : ""}
+  </div>`;
+}
+
+function painGuidanceMarkup(pain, exerciseId) {
+  const value = Number(pain) || 0;
+  if (value <= 0) return "";
+  if (value <= 3) return `<div class="pain-guidance mild"><b>Есть дискомфорт</b><span>Снизь темп или амплитуду. Боль не должна нарастать от подхода к подходу.</span></div>`;
+  if (value <= 5) return `<div class="pain-guidance warning"><b>Не форсируй движение</b><span>Снизь нагрузку и выбери безболезненную амплитуду. Если ощущение сохраняется — замени упражнение.</span><button data-action="open-replacement">Подобрать замену</button></div>`;
+  return `<div class="pain-guidance danger"><b>Останови это упражнение</b><span>Резкую, нарастающую или необычную боль не тренируем через силу. Перейди на безболезненную альтернативу.</span><button data-action="open-replacement">Заменить упражнение</button></div>`;
+}
+
+function updatePainGuidance() {
+  const host = $("#painGuidance");
+  const exercise = state.activeWorkout?.exercises?.[state.workoutIndex];
+  if (!host || !exercise) return;
+  host.innerHTML = painGuidanceMarkup(exercise.pain, exercise.id);
+}
+
+function openRestEditor() {
+  collectCurrentExercise();
+  const exercise = state.activeWorkout?.exercises?.[state.workoutIndex];
+  if (!exercise) return;
+  modalRoot.innerHTML = `<div class="modal-backdrop" data-close-modal><section class="bottom-sheet"><div class="sheet-handle"></div>
+    <div class="sheet-head"><div><p class="eyebrow">Отдых между подходами</p><h2>${escapeHtml(exercise.name)}</h2><p class="subtle">Измени базовый отдых для следующих подходов этого упражнения. Текущий запущенный таймер не пересчитывается.</p></div><button class="close-button" data-close-modal aria-label="Закрыть">×</button></div>
+    <div class="form-grid"><div class="field full"><label>Секунды</label><input id="restSeconds" inputmode="numeric" type="number" min="30" max="300" step="15" value="${Number(exercise.rest) || 60}" /></div></div>
+    <div class="rest-presets">${[45,60,75,90,105,120,150,180].map((value) => `<button data-rest-preset="${value}">${value}с</button>`).join("")}</div>
+    <button class="primary-button wide" style="margin-top:12px" data-action="save-rest">Сохранить отдых</button>
+  </section></div>`;
+}
+
+function saveRestEditor() {
+  const exercise = state.activeWorkout?.exercises?.[state.workoutIndex];
+  if (!exercise) return;
+  const value = Math.round((Number($("#restSeconds")?.value) || exercise.rest || 60) / 15) * 15;
+  exercise.rest = Math.min(300, Math.max(30, value));
+  modalRoot.innerHTML = "";
+  saveState();
+  renderWorkout();
+  toast(`Отдых: ${exercise.rest} сек.`);
+}
+
+async function openReplacement() {
+  collectCurrentExercise();
+  const exercise = state.activeWorkout?.exercises?.[state.workoutIndex];
+  if (!exercise) return;
+  modalRoot.innerHTML = `<div class="modal-backdrop"><section class="bottom-sheet"><div class="sheet-handle"></div><p class="eyebrow">Безопасная замена</p><h2>Ищу варианты…</h2><p class="subtle">Сохраняю движение, доступное оборудование и уровень.</p></section></div>`;
+  try {
+    const excludeIds = state.activeWorkout.exercises.map((item) => item.id);
+    const { alternatives } = await api("/api/exercise/alternatives", {
+      method: "POST",
+      body: JSON.stringify({ exerciseId: exercise.id, profile: state.profile, excludeIds, limit: 6 })
+    });
+    modalRoot.innerHTML = `<div class="modal-backdrop" data-close-modal><section class="bottom-sheet replacement-sheet"><div class="sheet-handle"></div>
+      <div class="sheet-head"><div><p class="eyebrow">Замена упражнения</p><h2>${escapeHtml(exercise.name)}</h2><p class="subtle">Только варианты с тем же movement pattern и совместимым оборудованием. Замена действует на текущую тренировку.</p></div><button class="close-button" data-close-modal aria-label="Закрыть">×</button></div>
+      <div class="replacement-list">${alternatives.length ? alternatives.map((item) => `<button class="replacement-option" data-replacement-id="${item.id}"><span class="replacement-art">${exerciseArt(item.id)}</span><span><b>${escapeHtml(item.name)}</b><small>${escapeHtml(item.muscle)} · ${escapeHtml(item.reason)}</small></span><span class="replacement-arrow">→</span></button>`).join("") : `<div class="empty-state"><div class="emoji">↺</div><h3>Совместимой замены пока нет</h3><p class="subtle">FORMA не будет подсовывать другое движение только ради заполнения карточки.</p></div>`}</div>
+    </section></div>`;
+  } catch (error) {
+    modalRoot.innerHTML = "";
+    toast(error.message);
+  }
+}
+
+function clientCanUseExternalLoad(exercise) {
+  if (!exercise || exercise.unit !== "кг") return false;
+  const available = new Set(state.profile?.equipment || []);
+  available.add("bodyweight");
+  const loadBearing = new Set(["dumbbells", "barbell", "cable", "machine"]);
+  return (exercise.requiredEquipmentOptions || []).some((option) => option.every((item) => available.has(item)) && option.some((item) => loadBearing.has(item)));
+}
+
+function makeReplacementExercise(previous, replacementMeta, setCount) {
+  const count = Math.max(1, setCount);
+  return {
+    ...previous,
+    id: replacementMeta.id,
+    name: replacementMeta.name,
+    muscle: replacementMeta.muscle,
+    movementPattern: replacementMeta.movementPattern,
+    exerciseType: replacementMeta.exerciseType,
+    unit: replacementMeta.unit,
+    loadMode: clientCanUseExternalLoad(replacementMeta) ? "external" : (replacementMeta.unit === "кг" ? "bodyweight" : "none"),
+    rest: Number(replacementMeta.rest) || previous.rest,
+    suggestedWeight: 0,
+    plannedWeight: 0,
+    sets: count,
+    replacedFrom: previous.id,
+    stoppedEarly: false,
+    setLogs: Array.from({ length: count }, (_, index) => ({
+      set: index + 1, weight: "", reps: previous.repRange?.min || parseInt(previous.target, 10) || 10, done: false
+    })),
+    rpe: Number(previous.rpeTarget || 7),
+    pain: 0
+  };
+}
+
+function applySessionReplacement(replacementId) {
+  collectCurrentExercise();
+  const replacementMeta = state.exercises.find((item) => item.id === replacementId);
+  const workout = state.activeWorkout;
+  const current = workout?.exercises?.[state.workoutIndex];
+  if (!replacementMeta || !current || replacementMeta.movementPattern !== current.movementPattern) return toast("Замена не прошла проверку movement pattern");
+
+  const completed = current.setLogs.filter((set) => set.done);
+  const remaining = current.setLogs.length - completed.length;
+  clearRestTimer({ persist: false });
+
+  if (completed.length === 0) {
+    workout.exercises[state.workoutIndex] = makeReplacementExercise(current, replacementMeta, current.setLogs.length);
+  } else if (remaining > 0) {
+    current.setLogs = completed.map((set, index) => ({ ...set, set: index + 1 }));
+    current.sets = completed.length;
+    current.stoppedEarly = true;
+    const replacement = makeReplacementExercise(current, replacementMeta, remaining);
+    replacement.replacedAfter = current.id;
+    workout.exercises.splice(state.workoutIndex + 1, 0, replacement);
+    state.workoutIndex += 1;
+  } else {
+    toast("Все подходы уже завершены — переходи к следующему упражнению");
+    modalRoot.innerHTML = "";
+    return;
+  }
+
+  modalRoot.innerHTML = "";
+  saveState();
+  renderWorkout();
+  toast(`Замена: ${replacementMeta.name}`);
+}
+
 function phaseForWeek(plan, week = plan?.week || 1) {
   if (!plan?.weeks?.length) return null;
   return plan.weeks.find((item) => item.week === Math.max(1, Number(week) || 1)) || plan.weeks[0] || null;
@@ -184,6 +439,11 @@ function copySuggestedWeights(fromPlan, toPlan) {
   (fromPlan?.weeks || []).forEach((week) => collect(week.workouts));
 
   const apply = (workouts = []) => workouts.forEach((workout) => (workout.exercises || []).forEach((exercise) => {
+    if (exercise.loadMode !== "external") {
+      exercise.suggestedWeight = 0;
+      exercise.plannedWeight = 0;
+      return;
+    }
     if (!weights.has(exercise.id)) return;
     exercise.suggestedWeight = weights.get(exercise.id);
     if (exercise.unit === "кг") {
@@ -306,6 +566,7 @@ function renderHome() {
   $(".topbar").hidden = false;
   $(".bottom-nav").hidden = false;
   const workout = getTodayWorkout();
+  const sessionActive = Boolean(state.activeWorkout);
   const completed = state.logs.length;
   const latestAnalysis = state.analyses.at(-1) || null;
   const readiness = latestAnalysis?.metrics?.readiness ?? null;
@@ -329,7 +590,7 @@ function renderHome() {
       </div>
       <h2>${escapeHtml(workout?.title || "Восстановление")}</h2>
       <div class="hero-meta"><span>${workout?.duration || 0} мин</span><span>•</span><span>${workout?.exercises?.length || 0} упражнений</span><span>•</span><span>RPE ${avgTargetRpe}</span></div>
-      <div class="hero-action">${workout ? `<button class="primary-button" data-action="start-workout">${icons.play} Начать тренировку</button>` : ""}<span class="subtle">${workout?.dayName || "Отдых"}</span></div>
+      <div class="hero-action">${workout ? `<button class="primary-button" data-action="start-workout">${icons.play} ${sessionActive ? "Продолжить тренировку" : "Начать тренировку"}</button>` : ""}<span class="subtle">${workout?.dayName || "Отдых"}</span></div>
     </article>
 
     <div class="section-head"><h2>Факты</h2><button class="text-button" data-action="plan">Открыть план</button></div>
@@ -346,6 +607,7 @@ function renderHome() {
 
 function renderPlan() {
   const plan = state.plan;
+  const sessionActive = Boolean(state.activeWorkout);
   const currentPhase = phaseForWeek(plan);
   const weekDays = ["Пн","Вт","Ср","Чт","Пт","Сб","Вс"];
   const workoutByDay = new Map((plan.workouts || []).map((workout) => [workout.dayIndex, workout]));
@@ -368,7 +630,7 @@ function renderPlan() {
     ${(plan.workouts || []).map((workout) => `<article class="plan-card premium-card ${workout.status === "today" ? "today" : ""}">
       <div class="plan-card-head"><div><div class="day-title"><span class="day-badge">${workout.dayName}</span><h3>${escapeHtml(workout.title)}</h3><span class="duration-pill">${workout.duration} мин</span>${workout.coverage?.status === "limited" ? `<span class="workout-constraint">ограничено</span>` : ""}</div><p class="subtle">${escapeHtml(workout.focus)}</p></div><span class="workout-state ${workout.status}">${workout.status === "done" ? icons.check : workout.exercises.length}</span></div>
       <div class="exercise-preview-row">${workout.exercises.slice(0,4).map((exercise) => `<button class="exercise-preview" data-exercise="${exercise.id}" aria-label="${escapeHtml(exercise.name)}"><span class="exercise-preview-art">${exerciseArt(exercise.id)}</span><b>${escapeHtml(exercise.name)}</b><small>${exercise.sets}×${escapeHtml(exercise.target)} · RPE ${exercise.rpeTarget}</small></button>`).join("")}</div>
-      <div class="plan-card-footer"><span>${workout.exercises.length} упражнений</span>${workout.status === "today" ? `<button class="start-inline" data-action="start-workout">${icons.play} Начать</button>` : `<span class="focus-label">${escapeHtml(workout.phaseLabel || "")}</span>`}</div>
+      <div class="plan-card-footer"><span>${workout.exercises.length} упражнений</span>${workout.status === "today" ? `<button class="start-inline" data-action="start-workout">${icons.play} ${sessionActive ? "Продолжить" : "Начать"}</button>` : `<span class="focus-label">${escapeHtml(workout.phaseLabel || "")}</span>`}</div>
     </article>`).join("")}
 
     <div class="section-head compact"><div><p class="eyebrow">Расписание недели</p><h2>Ритм и восстановление</h2></div></div>
@@ -398,9 +660,12 @@ function initActiveWorkout() {
   state.activeWorkout = source;
   state.workoutIndex = 0;
   state.workoutStartedAt = Date.now();
+  state.restTimer = null;
+  saveState();
 }
 
 function renderWorkout() {
+  clearInterval(state.timerId);
   $(".bottom-nav").hidden = true;
   $("#app").classList.add("workout-mode");
   initActiveWorkout();
@@ -410,6 +675,7 @@ function renderWorkout() {
   }
   const workout = state.activeWorkout;
   const exercise = workout.exercises[state.workoutIndex];
+  if (state.restTimer && state.restTimer.exerciseId !== exercise.id) clearRestTimer({ persist: false });
   const setCount = Math.max(1, exercise.setLogs.length);
   const progress = ((state.workoutIndex + exercise.setLogs.filter((item) => item.done).length / setCount) / workout.exercises.length) * 100;
   root.innerHTML = `<section class="workout-screen">
@@ -417,16 +683,24 @@ function renderWorkout() {
     <div class="progress-track" aria-label="Прогресс тренировки"><span style="width:${progress}%"></span></div>
     <article class="current-exercise premium-card">
       <button class="current-art exercise-art-frame" data-art-contract="exercise-3x2" data-exercise="${exercise.id}" aria-label="Открыть технику ${escapeHtml(exercise.name)}">${exerciseArt(exercise.id, true)}<span class="art-hint">Техника</span></button>
-      <div class="exercise-title-row"><div><div class="exercise-meta-row"><span class="muscle-pill">${escapeHtml(exercise.muscle)}</span><span>Отдых ${exercise.rest} сек.</span></div></div><button class="info-button" data-exercise="${exercise.id}" aria-label="Техника упражнения">i</button></div>
-      <div class="sets-grid"><span class="label">Сет</span><span class="label">Вес</span><span class="label">Повт.</span><span class="label">Готово</span>
-        ${exercise.setLogs.map((set, index) => `<span class="set-index">${index + 1}</span><input class="set-input" inputmode="decimal" data-set-weight="${index}" value="${set.weight}" aria-label="Вес подхода ${index+1}"/><input class="set-input" inputmode="numeric" data-set-reps="${index}" value="${set.reps}" aria-label="Повторения подхода ${index+1}"/><button class="set-check ${set.done ? "done" : ""}" data-set-done="${index}" aria-label="Отметить подход">${icons.check}</button>`).join("")}
+      <div class="exercise-title-row"><div><div class="exercise-meta-row"><span class="muscle-pill">${escapeHtml(exercise.muscle)}</span><button class="rest-setting-button" data-action="edit-rest">Отдых ${exercise.rest} сек. · изменить</button></div></div><div class="exercise-title-actions"><button class="replace-button" data-action="open-replacement" aria-label="Заменить упражнение">${icons.rotate}<span>Заменить</span></button><button class="info-button" data-exercise="${exercise.id}" aria-label="Техника упражнения">i</button></div></div>
+      ${workoutInsightMarkup(exercise)}
+      <div class="sets-grid"><span class="label">Сет</span><span class="label">${exercise.loadMode === "external" ? "Вес" : "Нагрузка"}</span><span class="label">${exercise.unit === "сек." ? "Время" : "Повт."}</span><span class="label">Готово</span>
+        ${exercise.setLogs.map((set, index) => `<span class="set-index">${index + 1}</span><input class="set-input" inputmode="decimal" data-set-weight="${index}" value="${set.weight}" placeholder="—" ${exercise.loadMode === "external" ? "" : "disabled"} aria-label="${exercise.loadMode === "external" ? `Вес подхода ${index+1}` : `Внешний вес не используется в подходе ${index+1}`}"/><input class="set-input" inputmode="numeric" data-set-reps="${index}" value="${set.reps}" aria-label="${exercise.unit === "сек." ? "Время" : "Повторения"} подхода ${index+1}"/><button class="set-check ${set.done ? "done" : ""}" data-set-done="${index}" aria-label="Отметить подход">${icons.check}</button>`).join("")}
       </div>
-      <button class="add-set-button" data-action="add-set">${icons.plus}<span>Добавить сет</span></button>
+      ${restTimerMarkup(exercise)}
+      <div class="set-management"><button class="add-set-button" data-action="add-set">${icons.plus}<span>Добавить сет</span></button><button class="remove-set-button" data-action="remove-set" ${exercise.setLogs.length <= 1 ? "disabled" : ""}><span>−</span> Удалить последний</button></div>
       <div class="effort-grid"><div class="field"><label>Тяжесть, RPE</label><select id="rpe">${[5,6,7,8,9,10].map((value) => `<option value="${value}" ${exercise.rpe == value ? "selected" : ""}>${value} — ${rpeLabel(value)}</option>`).join("")}</select></div><div class="field"><label>Боль, 0–10</label><select id="pain">${[0,1,2,3,4,5,6,7,8,9,10].map((value) => `<option value="${value}" ${exercise.pain == value ? "selected" : ""}>${value} — ${painLabel(value)}</option>`).join("")}</select></div></div>
+      <div id="painGuidance">${painGuidanceMarkup(exercise.pain, exercise.id)}</div>
       <div class="workout-actions"><button class="secondary-button" data-action="prev-exercise" ${state.workoutIndex === 0 ? "disabled" : ""}>Назад</button><button class="primary-button" data-action="next-exercise">${state.workoutIndex === workout.exercises.length - 1 ? "Завершить" : "Следующее"} ${icons.arrow}</button></div>
     </article>
   </section>`;
-  state.timerId = setInterval(() => { const timer = $("#workoutTimer"); if (timer) timer.textContent = formatTimer(); }, 1000);
+  state.timerId = setInterval(() => {
+    const timer = $("#workoutTimer");
+    if (timer) timer.textContent = formatTimer();
+    updateRestTimerUi();
+  }, 1000);
+  updateRestTimerUi();
 }
 
 function exactTrainingVolume(log) {
@@ -672,6 +946,7 @@ async function runFullAppAudit() {
     workoutIndex: state.workoutIndex,
     activeWorkout: state.activeWorkout ? structuredClone(state.activeWorkout) : null,
     workoutStartedAt: state.workoutStartedAt,
+    restTimer: state.restTimer ? structuredClone(state.restTimer) : null,
     scrollY: window.scrollY
   };
   const snapshots = [];
@@ -736,7 +1011,7 @@ async function runFullAppAudit() {
     ];
 
     const report = {
-      schema: "forma.app-audit.v3",
+      schema: "forma.app-audit.v4",
       generatedAt: new Date().toISOString(),
       scope: "full-client-app",
       privacy: {
@@ -759,6 +1034,7 @@ async function runFullAppAudit() {
     state.workoutIndex = original.workoutIndex;
     state.activeWorkout = original.activeWorkout;
     state.workoutStartedAt = original.workoutStartedAt;
+    state.restTimer = original.restTimer;
     state.auditRunning = false;
     modalRoot.innerHTML = "";
     render();
@@ -809,7 +1085,10 @@ async function finishOnboarding() {
 function collectCurrentExercise() {
   if (!state.activeWorkout) return;
   const exercise = state.activeWorkout.exercises[state.workoutIndex];
-  $$('[data-set-weight]').forEach((input) => exercise.setLogs[Number(input.dataset.setWeight)].weight = Number(input.value) || 0);
+  $$('[data-set-weight]').forEach((input) => {
+    const raw = input.value.trim();
+    exercise.setLogs[Number(input.dataset.setWeight)].weight = raw === "" ? "" : (Number(raw) || 0);
+  });
   $$('[data-set-reps]').forEach((input) => exercise.setLogs[Number(input.dataset.setReps)].reps = Number(input.value) || 0);
   exercise.rpe = Number($("#rpe")?.value || 7);
   exercise.pain = Number($("#pain")?.value || 0);
@@ -895,6 +1174,7 @@ async function finishWorkout(readiness = { sleep: 7, energy: 7, mood: 8 }, note 
     state.logs.push({ createdAt: new Date().toISOString(), title: workout.title, phase: workout.phase, duration: Math.max(60, (Date.now() - state.workoutStartedAt) / 1000), entries, readiness, note, analysisState: analysis.state, metrics: analysis.metrics });
     state.activeWorkout = null;
     state.workoutStartedAt = null;
+    state.restTimer = null;
     saveState();
     modalRoot.innerHTML = `<div class="modal-backdrop"><section class="bottom-sheet"><div class="sheet-handle"></div><p class="eyebrow">Анализ завершён</p><h2>${escapeHtml(analysis.headline)}</h2><p class="subtle">${escapeHtml(analysis.summary)}</p><span class="analysis-state">${scheduleUpdate.cycleRefreshed ? "Создан новый 8-недельный цикл" : "Double progression применена к плану"}</span><div class="analysis-metrics"><div><b>${analysis.metrics.completion}%</b><small>выполнено</small></div><div><b>${analysis.metrics.avgRpe}</b><small>средний RPE</small></div><div><b>${analysis.metrics.readiness}%</b><small>готовность</small></div></div><div class="instruction-box"><h3>Что меняем дальше</h3>${analysis.recommendations.slice(0,4).map((rec) => `<div class="history-row"><div><b>${escapeHtml(rec.name)}</b><small>${escapeHtml(rec.note)}</small></div><span class="trend-up">${escapeHtml(rec.action)}${rec.nextWeight ? ` · ${rec.nextWeight} ${escapeHtml(rec.unit)}` : ""}</span></div>`).join("")}</div><div class="safety-note">${escapeHtml(analysis.safety)}</div><button class="primary-button wide" style="margin-top:13px" data-action="analysis-done">Готово</button></section></div>`;
   } catch (error) {
@@ -936,6 +1216,12 @@ document.addEventListener("click", async (event) => {
   if (!target) return;
 
   if (target.dataset.screen) return setScreen(target.dataset.screen);
+  if (target.dataset.restPreset) {
+    const input = $("#restSeconds");
+    if (input) input.value = target.dataset.restPreset;
+    return;
+  }
+  if (target.dataset.replacementId) return applySessionReplacement(target.dataset.replacementId);
   if (target.dataset.exercise) return openExercise(target.dataset.exercise);
   if (target.hasAttribute("data-close-modal")) {
     if (event.target === target || target.matches("button")) modalRoot.innerHTML = "";
@@ -992,24 +1278,56 @@ document.addEventListener("click", async (event) => {
   if (target.dataset.onboarding === "finish") return finishOnboarding();
 
   if (target.dataset.setDone !== undefined) {
+    collectCurrentExercise();
     const index = Number(target.dataset.setDone);
     const exercise = state.activeWorkout.exercises[state.workoutIndex];
     exercise.setLogs[index].done = !exercise.setLogs[index].done;
-    target.classList.toggle("done", exercise.setLogs[index].done);
+    if (exercise.setLogs[index].done) startRestTimer(exercise, index);
+    else if (state.restTimer?.exerciseId === exercise.id && state.restTimer?.setIndex === index) clearRestTimer({ persist: false });
+    saveState();
+    renderWorkout();
     return;
   }
 
   const action = target.dataset.action;
+  if (action === "open-replacement") return openReplacement();
+  if (action === "edit-rest") return openRestEditor();
+  if (action === "save-rest") return saveRestEditor();
+  if (action === "rest-add") {
+    if (!state.restTimer) return;
+    state.restTimer.until = Math.max(Date.now(), Number(state.restTimer.until) || Date.now()) + 15_000;
+    state.restTimer.notified = false;
+    saveState();
+    renderWorkout();
+    return;
+  }
+  if (action === "rest-skip") {
+    clearRestTimer();
+    renderWorkout();
+    return;
+  }
   if (action === "add-set") {
     collectCurrentExercise();
     const exercise = state.activeWorkout?.exercises?.[state.workoutIndex];
     if (!exercise) return;
     const result = addSetLog(exercise);
     if (!result.added) return toast(result.reason === "max_sets" ? "Максимум 10 сетов на упражнение" : "Не удалось добавить сет");
+    saveState();
     renderWorkout();
     return;
   }
-  if (action === "exit-workout") { collectCurrentExercise(); return setScreen("plan"); }
+  if (action === "remove-set") {
+    collectCurrentExercise();
+    const exercise = state.activeWorkout?.exercises?.[state.workoutIndex];
+    if (!exercise) return;
+    const result = removeLastSetLog(exercise);
+    if (!result.removed) return toast(result.reason === "min_sets" ? "Оставь хотя бы один рабочий сет" : "Не удалось удалить сет");
+    if (state.restTimer?.exerciseId === exercise.id && Number(state.restTimer.setIndex) >= exercise.setLogs.length) clearRestTimer({ persist: false });
+    saveState();
+    renderWorkout();
+    return;
+  }
+  if (action === "exit-workout") { collectCurrentExercise(); saveState(); return setScreen("plan"); }
   if (action === "home") return setScreen("home");
   if (action === "profile") return openProfile();
   if (action === "run-app-audit") {
@@ -1030,8 +1348,8 @@ document.addEventListener("click", async (event) => {
   }
   if (action === "plan") return setScreen("plan");
   if (action === "start-workout") return setScreen("workout");
-  if (action === "prev-exercise") { collectCurrentExercise(); state.workoutIndex = Math.max(0, state.workoutIndex - 1); renderWorkout(); return; }
-  if (action === "next-exercise") { collectCurrentExercise(); if (state.workoutIndex < state.activeWorkout.exercises.length - 1) { state.workoutIndex += 1; renderWorkout(); } else openReadinessCheck(); return; }
+  if (action === "prev-exercise") { collectCurrentExercise(); clearRestTimer({ persist: false }); state.workoutIndex = Math.max(0, state.workoutIndex - 1); saveState(); renderWorkout(); return; }
+  if (action === "next-exercise") { collectCurrentExercise(); clearRestTimer({ persist: false }); if (state.workoutIndex < state.activeWorkout.exercises.length - 1) { state.workoutIndex += 1; saveState(); renderWorkout(); } else { saveState(); openReadinessCheck(); } return; }
   if (action === "submit-readiness") { const readiness = { sleep: Number($("#sleepScore")?.value || 7), energy: Number($("#energyScore")?.value || 7), mood: Number($("#moodScore")?.value || 8) }; const note = $("#workoutNote")?.value.trim() || ""; target.disabled = true; target.textContent = "Анализирую…"; await finishWorkout(readiness, note); return; }
   if (action === "analysis-done") { modalRoot.innerHTML = ""; setScreen("progress"); return; }
   if (action === "reset-app") { localStorage.removeItem("forma-ai-state"); location.reload(); return; }
@@ -1043,6 +1361,34 @@ document.addEventListener("click", async (event) => {
   if (target.classList.contains("prompt-chip")) sendCoachMessage(target.textContent);
 });
 
+document.addEventListener("input", (event) => {
+  if (state.screen !== "workout" || !state.activeWorkout) return;
+  const exercise = state.activeWorkout.exercises[state.workoutIndex];
+  if (event.target.dataset?.setWeight !== undefined) {
+    const raw = event.target.value.trim();
+    exercise.setLogs[Number(event.target.dataset.setWeight)].weight = raw === "" ? "" : (Number(raw) || 0);
+    scheduleSaveState();
+  }
+  if (event.target.dataset?.setReps !== undefined) {
+    exercise.setLogs[Number(event.target.dataset.setReps)].reps = Number(event.target.value) || 0;
+    scheduleSaveState();
+  }
+});
+
+document.addEventListener("change", (event) => {
+  if (state.screen !== "workout" || !state.activeWorkout) return;
+  const exercise = state.activeWorkout.exercises[state.workoutIndex];
+  if (event.target.id === "rpe") {
+    exercise.rpe = Number(event.target.value) || 7;
+    saveState();
+  }
+  if (event.target.id === "pain") {
+    exercise.pain = Number(event.target.value) || 0;
+    saveState();
+    updatePainGuidance();
+  }
+});
+
 document.addEventListener("submit", (event) => {
   if (event.target.id !== "coachForm") return;
   event.preventDefault();
@@ -1050,6 +1396,17 @@ document.addEventListener("submit", (event) => {
   const text = input.value;
   input.value = "";
   sendCoachMessage(text);
+});
+
+window.addEventListener("pagehide", () => {
+  if (state.screen === "workout" && state.activeWorkout) collectCurrentExercise();
+  saveState();
+});
+
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState !== "hidden") return;
+  if (state.screen === "workout" && state.activeWorkout) collectCurrentExercise();
+  saveState();
 });
 
 window.addEventListener("beforeinstallprompt", (event) => {
@@ -1060,13 +1417,15 @@ window.addEventListener("beforeinstallprompt", (event) => {
 
 async function ensureCurrentPlanSchema() {
   if (!state.profile) return;
-  const valid = state.plan?.planRevision === 5 && state.plan?.cycleWeeks === 8 && Array.isArray(state.plan?.weeks) && state.plan.weeks.length === 8;
+  const valid = state.plan?.planRevision === 6 && state.plan?.cycleWeeks === 8 && Array.isArray(state.plan?.weeks) && state.plan.weeks.length === 8;
   if (valid) return;
   const previous = state.plan;
   const { plan } = await api("/api/plan/generate", { method: "POST", body: JSON.stringify({ profile: state.profile, cycleNumber: previous?.cycleNumber || 1 }) });
   if (previous) copySuggestedWeights(previous, plan);
   state.plan = plan;
   state.activeWorkout = null;
+  state.workoutStartedAt = null;
+  state.restTimer = null;
   saveState();
 }
 

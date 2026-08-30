@@ -1,4 +1,4 @@
-const CACHE = "forma-ai-v0.4.3-audit3";
+const CACHE = "forma-ai-v0.4.4-workout-intelligence";
 const APP_SHELL = [
   "/",
   "/index.html",

@@ -77,7 +77,7 @@ function rectOf(element) {
 }
 
 function dataAttributes(element) {
-  const allowed = ["action", "screen", "exercise", "setDone", "setWeight", "setReps", "onboarding"];
+  const allowed = ["action", "screen", "exercise", "replacementId", "setDone", "setWeight", "setReps", "onboarding"];
   const data = {};
   for (const key of allowed) {
     if (element.dataset?.[key] !== undefined) data[key] = element.dataset[key];
@@ -360,12 +360,12 @@ function scanLayoutIssues(scope = document) {
 function keyElementSnapshot(scope = document) {
   const selectors = [
     ".app-shell", ".topbar", ".screen-root", ".bottom-nav", ".workout-header", ".progress-track",
-    ".current-exercise", ".exercise-art-frame", ".current-art", ".exercise-art-image", ".exercise-title-row", ".sets-grid",
-    ".add-set-button", ".effort-grid", ".workout-actions", ".plan-card", ".hero-card", ".stat-grid",
+    ".current-exercise", ".exercise-art-frame", ".current-art", ".exercise-art-image", ".exercise-title-row", ".exercise-title-actions", ".workout-insights", ".sets-grid", ".set-management",
+    ".rest-timer", ".pain-guidance", ".add-set-button", ".remove-set-button", ".rest-setting-button", ".effort-grid", ".workout-actions", ".plan-card", ".hero-card", ".stat-grid",
     ".bottom-sheet", ".instruction-art", ".technique-strip"
   ];
   const output = [];
-  const ruleSelectors = new Set([".app-shell", ".bottom-nav", ".current-exercise", ".exercise-art-frame", ".current-art", ".exercise-art-image", ".sets-grid", ".effort-grid", ".workout-actions", ".bottom-sheet", ".instruction-art"]);
+  const ruleSelectors = new Set([".app-shell", ".bottom-nav", ".current-exercise", ".exercise-art-frame", ".current-art", ".exercise-art-image", ".workout-insights", ".sets-grid", ".rest-timer", ".pain-guidance", ".effort-grid", ".workout-actions", ".bottom-sheet", ".instruction-art"]);
   for (const selector of selectors) {
     const elements = [...scope.querySelectorAll(selector)].slice(0, selector === ".plan-card" ? 5 : 2);
     for (const element of elements) output.push(elementEvidence(element, ruleSelectors.has(selector)));
@@ -625,6 +625,20 @@ export function auditDataIntegrity({ state, exercises }) {
     return tests;
   }
 
+  let persistedSession = null;
+  try { persistedSession = JSON.parse(localStorage.getItem("forma-ai-state") || "null")?.activeSession || null; } catch { persistedSession = null; }
+  const sessionExpected = Boolean(state.activeWorkout);
+  const sessionCoherent = !sessionExpected || Boolean(
+    persistedSession
+    && persistedSession.planId === plan.id
+    && persistedSession.workout?.id === state.activeWorkout?.id
+    && Array.isArray(persistedSession.workout?.exercises)
+    && persistedSession.workout.exercises.length === state.activeWorkout?.exercises?.length
+  );
+  push("data.active_session_persistence", sessionCoherent ? "pass" : "fail",
+    sessionCoherent ? "Активная тренировка имеет восстановимый persisted session snapshot." : "Активная тренировка не согласована с persisted session snapshot.",
+    { active: sessionExpected, persisted: Boolean(persistedSession), planIdMatches: persistedSession?.planId === plan.id, exerciseCount: state.activeWorkout?.exercises?.length || 0 });
+
   const expectedPhases = ["adaptation", "adaptation", "volume", "volume", "intensity", "intensity", "peak", "deload"];
   const phases = plan.weeks?.map((week) => week.phase) || [];
   const phaseContractOk = Array.isArray(plan.weeks) && plan.weeks.length === 8 && expectedPhases.every((phase, index) => phases[index] === phase);
@@ -682,6 +696,20 @@ export function auditDataIntegrity({ state, exercises }) {
   push("data.plan_equipment_constraints", uniqueLeaks.length ? "fail" : "pass",
     uniqueLeaks.length ? "В плане есть упражнения, несовместимые с выбранным оборудованием." : "Оборудование всех упражнений плана совместимо с профилем.",
     { equipment: [...equipment], leaks: uniqueLeaks });
+
+  const loadBearingEquipment = new Set(["dumbbells", "barbell", "cable", "machine"]);
+  const externalLoadLeaks = [];
+  for (const entry of planExercises) {
+    if (!(Number(entry.plannedWeight) > 0)) continue;
+    const exercise = byId.get(entry.id);
+    if (!exercise) continue;
+    const options = exercise.requiredEquipmentOptions || [];
+    const hasLoadOption = options.some((option) => option.every((item) => equipment.has(item)) && option.some((item) => loadBearingEquipment.has(item)));
+    if (!hasLoadOption) externalLoadLeaks.push({ exerciseId: entry.id, plannedWeight: entry.plannedWeight, requiredEquipmentOptions: options });
+  }
+  push("data.plan_external_load_constraints", externalLoadLeaks.length ? "fail" : "pass",
+    externalLoadLeaks.length ? "План назначает внешний вес там, где текущий профиль не имеет совместимого load-bearing equipment." : "Внешняя нагрузка назначается только при реально доступном оборудовании.",
+    { leaks: externalLoadLeaks });
 
   const notProductionReady = [...new Set(planExercises
     .map((entry) => byId.get(entry.id))
@@ -784,7 +812,9 @@ export function sanitizeAppState(state) {
             sets: exercise.sets,
             repRange: exercise.repRange,
             rest: exercise.rest,
-            rpeTarget: exercise.rpeTarget
+            rpeTarget: exercise.rpeTarget,
+            plannedWeight: Number(exercise.plannedWeight) || 0,
+            loadMode: exercise.loadMode || null
           }))
         }))
       }))
@@ -794,6 +824,18 @@ export function sanitizeAppState(state) {
       productionReady: state.exercises?.filter((exercise) => exercise.productionReady !== false).length || 0,
       visualReady: state.exercises?.filter((exercise) => exercise.visualReady !== false && exercise.visual).length || 0
     },
+    activeSession: state.activeWorkout ? {
+      workoutId: state.activeWorkout.id || null,
+      exerciseIndex: Number(state.workoutIndex) || 0,
+      exerciseCount: state.activeWorkout.exercises?.length || 0,
+      startedAt: state.workoutStartedAt || null,
+      rest: state.restTimer ? {
+        exerciseId: state.restTimer.exerciseId || null,
+        setIndex: Number(state.restTimer.setIndex) || 0,
+        duration: Number(state.restTimer.duration) || 0,
+        remainingSeconds: Math.max(0, Math.ceil((Number(state.restTimer.until) - Date.now()) / 1000))
+      } : null
+    } : null,
     history: {
       workoutCount: state.logs?.length || 0,
       analysisCount: state.analyses?.length || 0

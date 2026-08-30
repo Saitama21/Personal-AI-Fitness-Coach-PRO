@@ -2,7 +2,7 @@ import http from "node:http";
 import { readFile, stat } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { generatePlan, analyzeWorkout } from "./src/plan-engine.js";
+import { generatePlan, analyzeWorkout, findExerciseAlternatives } from "./src/plan-engine.js";
 import { coachReply } from "./src/ai.js";
 import { exerciseList } from "./src/exercises.js";
 
@@ -117,7 +117,7 @@ async function handleApi(req, res, url) {
   if (req.method === "GET" && url.pathname === "/api/config") {
     return sendJson(res, 200, {
       appName: process.env.APP_NAME || "FORMA AI",
-      version: "0.4.3",
+      version: "0.4.4",
       aiEnabled: Boolean(process.env.OPENAI_API_KEY),
       aiModel: process.env.OPENAI_MODEL || "gpt-5-mini",
       mode: process.env.OPENAI_API_KEY ? "hybrid" : "local"
@@ -140,6 +140,20 @@ async function handleApi(req, res, url) {
     const errors = validateWorkoutAnalysis(body);
     if (errors.length) return sendJson(res, 422, { error: "workout_invalid", details: errors });
     return sendJson(res, 200, { analysis: analyzeWorkout(body) });
+  }
+
+  if (req.method === "POST" && url.pathname === "/api/exercise/alternatives") {
+    const body = await readJson(req);
+    const exerciseId = String(body.exerciseId || "").trim();
+    if (!exerciseId) return sendJson(res, 422, { error: "exercise_id_required" });
+    if (!body.profile || typeof body.profile !== "object") return sendJson(res, 422, { error: "profile_required" });
+    const alternatives = findExerciseAlternatives({
+      exerciseId,
+      profile: body.profile,
+      excludeIds: Array.isArray(body.excludeIds) ? body.excludeIds : [],
+      limit: body.limit
+    });
+    return sendJson(res, 200, { exerciseId, alternatives });
   }
 
   if (req.method === "POST" && url.pathname === "/api/coach") {
@@ -202,7 +216,7 @@ const server = http.createServer(async (req, res) => {
   if (req.method === "GET" && url.pathname === "/health") {
     return sendJson(res, 200, {
       status: "healthy",
-      version: "0.4.3",
+      version: "0.4.4",
       uptime: Math.round(process.uptime()),
       timestamp: new Date().toISOString()
     });

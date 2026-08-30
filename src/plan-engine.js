@@ -40,11 +40,20 @@ function normalizeEquipment(profile = {}) {
   return selected;
 }
 
+function compatibleEquipmentOptions(exercise, profile = {}) {
+  const available = normalizeEquipment(profile);
+  const options = Array.isArray(exercise?.requiredEquipmentOptions) ? exercise.requiredEquipmentOptions : [["bodyweight"]];
+  return options.filter((option) => option.every((required) => available.has(required)));
+}
+
 export function canPerformExercise(exercise, profile = {}) {
   if (!exercise?.productionReady) return false;
-  const available = normalizeEquipment(profile);
-  const options = Array.isArray(exercise.requiredEquipmentOptions) ? exercise.requiredEquipmentOptions : [["bodyweight"]];
-  return options.some((option) => option.every((required) => available.has(required)));
+  return compatibleEquipmentOptions(exercise, profile).length > 0;
+}
+
+function canUseExternalLoad(exercise, profile = {}) {
+  const loadBearing = new Set(["dumbbells", "barbell", "cable", "machine"]);
+  return compatibleEquipmentOptions(exercise, profile).some((option) => option.some((item) => loadBearing.has(item)));
 }
 
 function levelAllows(exercise, level) {
@@ -99,6 +108,56 @@ function chooseExercise(slot, context, selectedIds) {
   return pool
     .map((exercise) => ({ exercise, score: scoreCandidate(exercise, slot, context) }))
     .sort((a, b) => b.score - a.score || a.exercise.id.localeCompare(b.exercise.id))[0].exercise;
+}
+
+export function findExerciseAlternatives({ exerciseId, profile = {}, excludeIds = [], limit = 6 } = {}) {
+  const current = exercises[exerciseId];
+  if (!current?.productionReady) return [];
+
+  const excluded = new Set([exerciseId, ...(Array.isArray(excludeIds) ? excludeIds : [])]);
+  const currentGroups = new Set(current.muscleGroups || []);
+  const currentRank = LEVEL_RANK[current.difficulty] || 1;
+
+  return Object.values(exercises)
+    .filter((candidate) => (
+      !excluded.has(candidate.id)
+      && candidate.productionReady
+      && candidate.movementPattern === current.movementPattern
+      && canPerformExercise(candidate, profile)
+      && levelAllows(candidate, profile.level || "beginner")
+    ))
+    .map((candidate) => {
+      const overlap = (candidate.muscleGroups || []).filter((muscle) => currentGroups.has(muscle)).length;
+      const candidateRank = LEVEL_RANK[candidate.difficulty] || 1;
+      const score =
+        (candidate.primaryMuscle === current.primaryMuscle ? 40 : 0)
+        + overlap * 9
+        + (candidate.exerciseType === current.exerciseType ? 16 : 0)
+        + (candidate.laterality === current.laterality ? 8 : 0)
+        + (candidate.visualReady ? 8 : 0)
+        - Math.abs(candidateRank - currentRank) * 5;
+      return { candidate, score, overlap };
+    })
+    .sort((a, b) => b.score - a.score || a.candidate.id.localeCompare(b.candidate.id))
+    .slice(0, clamp(Number(limit) || 6, 1, 8))
+    .map(({ candidate, overlap }) => ({
+      id: candidate.id,
+      name: candidate.name,
+      muscle: candidate.muscle,
+      primaryMuscle: candidate.primaryMuscle,
+      movementPattern: candidate.movementPattern,
+      exerciseType: candidate.exerciseType,
+      laterality: candidate.laterality,
+      difficulty: candidate.difficulty,
+      unit: candidate.unit,
+      rest: candidate.rest,
+      visual: candidate.visual || null,
+      visualReady: Boolean(candidate.visualReady && candidate.visual),
+      muscleOverlap: overlap,
+      reason: overlap > 0
+        ? "Та же механика движения и близкая мышечная задача"
+        : "Та же механика движения и совместимое оборудование"
+    }));
 }
 
 function baseSets(level, goal, role) {
@@ -209,7 +268,7 @@ function roundLoad(value, increment = 0.5) {
 }
 
 function estimateStartingLoad(profile, exercise) {
-  if (exercise.unit !== "кг") return 0;
+  if (exercise.unit !== "кг" || !canUseExternalLoad(exercise, profile)) return 0;
   const weight = Number(profile.weight) || 65;
   const levelFactor = profile.level === "advanced" ? 0.24 : profile.level === "intermediate" ? 0.17 : 0.1;
   const patternFactor = {
@@ -273,7 +332,8 @@ function buildWorkout({ sessionKey, sessionIndex, dayIndex, weekRule, profile, g
     const reps = repRangeFor(goal, exercise, weekRule.phase);
     const sets = setBudget[exerciseIndex] ?? baseSets(level, goal, slot.role);
     const suggestedWeight = estimateStartingLoad({ ...profile, level }, exercise);
-    const plannedWeight = exercise.unit === "кг" ? roundLoad(suggestedWeight * weekRule.intensity, exercise.exerciseType === "isolation" ? 0.5 : 1) : 0;
+    const externalLoadAvailable = canUseExternalLoad(exercise, profile);
+    const plannedWeight = exercise.unit === "кг" && externalLoadAvailable ? roundLoad(suggestedWeight * weekRule.intensity, exercise.exerciseType === "isolation" ? 0.5 : 1) : 0;
 
     return {
       id: exercise.id,
@@ -289,6 +349,7 @@ function buildWorkout({ sessionKey, sessionIndex, dayIndex, weekRule, profile, g
       rest: chooseRest(goal, exercise, slot.role, weekRule.phase),
       suggestedWeight,
       plannedWeight,
+      loadMode: exercise.unit === "кг" ? (externalLoadAvailable ? "external" : "bodyweight") : "none",
       loadMultiplier: weekRule.intensity,
       unit: exercise.unit,
       rpeTarget: weekRule.rpe,

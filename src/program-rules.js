@@ -1,5 +1,5 @@
 export const CYCLE_WEEKS = 8;
-export const PLAN_REVISION = 5;
+export const PLAN_REVISION = 6;
 
 export const GOALS = Object.freeze({
   strength: { label: "Рост силы", baseRest: 150 },
