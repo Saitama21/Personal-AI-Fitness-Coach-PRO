@@ -1,15 +1,13 @@
 {
   "name": "forma-ai-mobile",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "private": true,
-  "description": "Mobile-first AI fitness coach PWA for iPhone, Railway-ready",
+  "description": "Constraint-based adaptive fitness coach PWA with periodization and double progression",
   "type": "module",
   "engines": {
     "node": ">=20"
   },
   "scripts": {
-    "start": "node server.js",
-    "dev": "node --watch server.js",
-    "check": "node --check server.js && node --check public/app.js && node --check public/workout-state.js && node --check src/plan-engine.js && node --check src/ai.js"
+    "start": "node server.js"
   }
 }

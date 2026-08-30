@@ -1,4 +1,4 @@
-const CACHE = "forma-ai-v0.3.0-visuals1";
+const CACHE = "forma-ai-v0.4.0-core1";
 const APP_SHELL = [
   "/",
   "/index.html",
@@ -8,7 +8,6 @@ const APP_SHELL = [
   "/manifest.webmanifest",
   "/icons/icon-192.png",
   "/icons/icon-512.png",
-  "/assets/exercises/back_extension.webp",
   "/assets/exercises/calf_raise.webp",
   "/assets/exercises/dead_bug.webp",
   "/assets/exercises/dumbbell_row.webp",

@@ -400,4 +400,47 @@ export const exercises = {
   }
 };
 
+
+const exerciseMetadata = {
+  goblet_squat: { movementPattern: "squat", primaryMuscle: "Квадрицепсы", difficulty: "beginner", laterality: "bilateral", exerciseType: "compound", requiredEquipmentOptions: [["dumbbells"]], progression: "Увеличивай повторения до верхней границы, затем вес.", regression: "Присед к опоре без веса" },
+  romanian_deadlift: { movementPattern: "hip_hinge", primaryMuscle: "Бицепс бедра", difficulty: "intermediate", laterality: "bilateral", exerciseType: "compound", requiredEquipmentOptions: [["dumbbells"], ["barbell"]], progression: "Сначала доведи все подходы до верхней границы повторений, затем добавь небольшой вес.", regression: "Ягодичный мост" },
+  incline_pushup: { movementPattern: "horizontal_push", primaryMuscle: "Грудные", difficulty: "beginner", laterality: "bilateral", exerciseType: "compound", requiredEquipmentOptions: [["bodyweight"]], progression: "Снижай высоту опоры или добавляй повторения при стабильной технике.", regression: "Более высокая опора" },
+  lat_pulldown: { movementPattern: "vertical_pull", primaryMuscle: "Широчайшие", difficulty: "beginner", laterality: "bilateral", exerciseType: "compound", requiredEquipmentOptions: [["cable"], ["machine"]], progression: "Доведи подходы до верхней границы повторений без раскачки, затем добавь вес.", regression: "Тяга резинки сверху" },
+  glute_bridge: { movementPattern: "hip_extension", primaryMuscle: "Ягодичные", difficulty: "beginner", laterality: "bilateral", exerciseType: "compound", requiredEquipmentOptions: [["bodyweight"]], progression: "Добавляй повторения, паузу вверху или внешний вес.", regression: "Мост с меньшей амплитудой" },
+  hip_thrust: { movementPattern: "hip_extension", primaryMuscle: "Ягодичные", difficulty: "intermediate", laterality: "bilateral", exerciseType: "compound", requiredEquipmentOptions: [["dumbbells"], ["barbell"]], progression: "Доведи все подходы до верхней границы повторений при RPE ≤ 8, затем добавь вес.", regression: "Ягодичный мост" },
+  reverse_lunge: { movementPattern: "unilateral_knee_dominant", primaryMuscle: "Ягодичные", difficulty: "beginner", laterality: "unilateral", exerciseType: "compound", requiredEquipmentOptions: [["bodyweight"], ["dumbbells"]], progression: "Сначала повторения и контроль, затем гантели.", regression: "Сплит-присед с опорой" },
+  split_squat: { movementPattern: "unilateral_knee_dominant", primaryMuscle: "Квадрицепсы", difficulty: "beginner", laterality: "unilateral", exerciseType: "compound", requiredEquipmentOptions: [["bodyweight"], ["dumbbells"]], progression: "Увеличивай повторения, затем нагрузку или амплитуду.", regression: "Сплит-присед с опорой рукой" },
+  step_up: { movementPattern: "unilateral_knee_dominant", primaryMuscle: "Квадрицепсы", difficulty: "beginner", laterality: "unilateral", exerciseType: "compound", requiredEquipmentOptions: [["bodyweight"], ["dumbbells"]], progression: "Добавляй повторения, затем небольшой вес без увеличения высоты ценой техники.", regression: "Низкая платформа" },
+  calf_raise: { movementPattern: "plantar_flexion", primaryMuscle: "Икроножные", difficulty: "beginner", laterality: "bilateral", exerciseType: "isolation", requiredEquipmentOptions: [["bodyweight"], ["dumbbells"]], progression: "Сначала полная амплитуда и повторения, затем нагрузка.", regression: "Двусторонние подъёмы с опорой" },
+  leg_abduction: { movementPattern: "hip_abduction", primaryMuscle: "Средняя ягодичная", difficulty: "beginner", laterality: "bilateral", exerciseType: "isolation", requiredEquipmentOptions: [["machine"]], progression: "Добавляй повторения без раскачки, затем минимальный шаг веса.", regression: "Отведение ноги лёжа на боку" },
+  back_extension: { movementPattern: "hip_hinge", primaryMuscle: "Ягодичные", difficulty: "intermediate", laterality: "bilateral", exerciseType: "compound", requiredEquipmentOptions: [["machine"]], progression: "Сначала амплитуда и контроль таза, затем внешний вес.", regression: "Ягодичный мост", visualReady: false },
+  dumbbell_row: { movementPattern: "horizontal_pull", primaryMuscle: "Широчайшие", difficulty: "beginner", laterality: "unilateral", exerciseType: "compound", requiredEquipmentOptions: [["dumbbells"]], progression: "Добавляй повторения при неподвижном корпусе, затем вес.", regression: "Тяга одной рукой с дополнительной опорой" },
+  face_pull: { movementPattern: "scapular_pull", primaryMuscle: "Задняя дельта", difficulty: "beginner", laterality: "bilateral", exerciseType: "accessory", requiredEquipmentOptions: [["cable"]], progression: "Увеличивай повторения и контроль лопаток до добавления веса.", regression: "Лёгкая тяга к лицу" },
+  rear_delt_fly: { movementPattern: "horizontal_abduction", primaryMuscle: "Задняя дельта", difficulty: "beginner", laterality: "bilateral", exerciseType: "isolation", requiredEquipmentOptions: [["dumbbells"]], progression: "Добавляй повторения без инерции, затем минимальный шаг веса.", regression: "Меньший вес и амплитуда" },
+  shoulder_press: { movementPattern: "vertical_push", primaryMuscle: "Передняя дельта", difficulty: "intermediate", laterality: "bilateral", exerciseType: "compound", requiredEquipmentOptions: [["dumbbells"]], progression: "Доведи все подходы до верхней границы повторений без прогиба, затем вес.", regression: "Жим одной рукой с лёгким весом" },
+  lateral_raise: { movementPattern: "shoulder_abduction", primaryMuscle: "Средняя дельта", difficulty: "beginner", laterality: "bilateral", exerciseType: "isolation", requiredEquipmentOptions: [["dumbbells"]], progression: "Добавляй повторения до верхней границы, затем самый малый шаг веса.", regression: "Меньший вес и частичная амплитуда без боли" },
+  dead_bug: { movementPattern: "anti_extension", primaryMuscle: "Кор", difficulty: "beginner", laterality: "contralateral", exerciseType: "core", requiredEquipmentOptions: [["bodyweight"]], progression: "Удлиняй рычаг и паузу только пока поясница остаётся стабильной.", regression: "Двигай только руками или только ногами" },
+  plank: { movementPattern: "anti_extension", primaryMuscle: "Кор", difficulty: "beginner", laterality: "bilateral", exerciseType: "core", requiredEquipmentOptions: [["bodyweight"]], progression: "Увеличивай время до верхней границы, затем усложняй вариант.", regression: "Планка от высокой опоры" }
+};
+
+for (const exercise of Object.values(exercises)) {
+  const metadata = exerciseMetadata[exercise.id] || {};
+  Object.assign(exercise, {
+    movementPattern: metadata.movementPattern || exercise.pattern,
+    primaryMuscle: metadata.primaryMuscle || exercise.muscleGroups?.[0] || exercise.muscle,
+    secondaryMuscles: (exercise.muscleGroups || []).filter((muscle) => muscle !== metadata.primaryMuscle),
+    difficulty: metadata.difficulty || "beginner",
+    laterality: metadata.laterality || "bilateral",
+    exerciseType: metadata.exerciseType || "accessory",
+    requiredEquipmentOptions: metadata.requiredEquipmentOptions || [["bodyweight"]],
+    recommendedSetRange: metadata.exerciseType === "isolation" ? [2, 4] : [2, 5],
+    recommendedRpeRange: [6, 9],
+    progression: metadata.progression || "Сначала качество и повторения, затем нагрузка.",
+    regression: metadata.regression || exercise.alternative,
+    visualReady: metadata.visualReady !== false,
+    visual: metadata.visualReady === false ? null : `/assets/exercises/${exercise.id}.webp`,
+    productionReady: metadata.visualReady !== false
+  });
+}
+
 export const exerciseList = Object.values(exercises);

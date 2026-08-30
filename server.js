@@ -96,11 +96,28 @@ function validateProfile(profile = {}) {
   return errors;
 }
 
+function validateWorkoutAnalysis(payload = {}) {
+  const errors = [];
+  if (!Array.isArray(payload.entries) || payload.entries.length === 0) {
+    errors.push("entries должен содержать хотя бы одно упражнение.");
+  }
+  const readiness = payload.readiness;
+  if (!readiness || typeof readiness !== "object") {
+    errors.push("readiness обязателен.");
+  } else {
+    for (const key of ["sleep", "energy", "mood"]) {
+      const value = Number(readiness[key]);
+      if (!Number.isFinite(value) || value < 1 || value > 10) errors.push(`readiness.${key} должен быть от 1 до 10.`);
+    }
+  }
+  return errors;
+}
+
 async function handleApi(req, res, url) {
   if (req.method === "GET" && url.pathname === "/api/config") {
     return sendJson(res, 200, {
       appName: process.env.APP_NAME || "FORMA AI",
-      version: "0.3.0",
+      version: "0.4.0",
       aiEnabled: Boolean(process.env.OPENAI_API_KEY),
       aiModel: process.env.OPENAI_MODEL || "gpt-5-mini",
       mode: process.env.OPENAI_API_KEY ? "hybrid" : "local"
@@ -120,6 +137,8 @@ async function handleApi(req, res, url) {
 
   if (req.method === "POST" && url.pathname === "/api/workout/analyze") {
     const body = await readJson(req);
+    const errors = validateWorkoutAnalysis(body);
+    if (errors.length) return sendJson(res, 422, { error: "workout_invalid", details: errors });
     return sendJson(res, 200, { analysis: analyzeWorkout(body) });
   }
 
@@ -158,6 +177,9 @@ async function serveStatic(req, res, url) {
     if (req.method === "HEAD") return res.end();
     res.end(content);
   } catch {
+    // SPA navigation gets the app shell, but a missing concrete asset must stay a real 404.
+    if (path.extname(pathname)) return sendJson(res, 404, { error: "not_found" });
+
     try {
       const fallback = await readFile(path.join(publicDir, "index.html"));
       res.writeHead(200, {
@@ -165,6 +187,7 @@ async function serveStatic(req, res, url) {
         "Content-Length": fallback.length,
         "Cache-Control": "no-cache"
       });
+      if (req.method === "HEAD") return res.end();
       res.end(fallback);
     } catch {
       sendJson(res, 404, { error: "not_found" });
@@ -179,7 +202,7 @@ const server = http.createServer(async (req, res) => {
   if (req.method === "GET" && url.pathname === "/health") {
     return sendJson(res, 200, {
       status: "healthy",
-      version: "0.3.0",
+      version: "0.4.0",
       uptime: Math.round(process.uptime()),
       timestamp: new Date().toISOString()
     });

@@ -15,7 +15,7 @@ const state = {
   messages: [
     { role: "ai", text: "Привет. Я буду менять план по фактическим весам, повторениям и самочувствию. Что нужно скорректировать?" }
   ],
-  config: { aiEnabled: false, mode: "local", version: "0.3.0" },
+  config: { aiEnabled: false, mode: "local", version: "0.4.0" },
   deferredInstall: null
 };
 
@@ -42,6 +42,7 @@ function escapeHtml(value = "") {
 
 function saveState() {
   localStorage.setItem("forma-ai-state", JSON.stringify({
+    schemaVersion: 2,
     profile: state.profile,
     plan: state.plan,
     logs: state.logs,
@@ -50,14 +51,32 @@ function saveState() {
   }));
 }
 
+function migrateProfile(profile) {
+  if (!profile) return null;
+  const migrated = structuredClone(profile);
+  const legacyEquipment = Array.isArray(migrated.equipment) ? migrated.equipment : [];
+  if (!migrated.trainingLocation) {
+    migrated.trainingLocation = legacyEquipment.includes("gym") ? "gym" : "home";
+  }
+  if (legacyEquipment.includes("gym")) {
+    migrated.equipment = ["bodyweight", "dumbbells", "barbell", "cable", "machine"];
+  } else {
+    migrated.equipment = legacyEquipment.filter((item) => !["gym", "home"].includes(item));
+    if (!migrated.equipment.includes("bodyweight")) migrated.equipment.push("bodyweight");
+  }
+  migrated.focus ||= "balanced";
+  migrated.sex ||= "unspecified";
+  return migrated;
+}
+
 function loadState() {
   try {
     const saved = JSON.parse(localStorage.getItem("forma-ai-state") || "null");
     if (!saved) return;
-    state.profile = saved.profile || null;
+    state.profile = migrateProfile(saved.profile);
     state.plan = saved.plan || null;
-    state.logs = saved.logs || [];
-    state.analyses = saved.analyses || [];
+    state.logs = Array.isArray(saved.logs) ? saved.logs : [];
+    state.analyses = Array.isArray(saved.analyses) ? saved.analyses : [];
     if (saved.messages?.length) state.messages = saved.messages;
   } catch (error) {
     console.warn("State restore failed", error);
@@ -88,31 +107,12 @@ function formatTimer() {
   return `${String(Math.floor(seconds / 60)).padStart(2, "0")}:${String(seconds % 60).padStart(2, "0")}`;
 }
 
-const exerciseVisuals = Object.freeze({
-  goblet_squat: "/assets/exercises/goblet_squat.webp",
-  romanian_deadlift: "/assets/exercises/romanian_deadlift.webp",
-  incline_pushup: "/assets/exercises/incline_pushup.webp",
-  lat_pulldown: "/assets/exercises/lat_pulldown.webp",
-  glute_bridge: "/assets/exercises/glute_bridge.webp",
-  hip_thrust: "/assets/exercises/hip_thrust.webp",
-  reverse_lunge: "/assets/exercises/reverse_lunge.webp",
-  split_squat: "/assets/exercises/split_squat.webp",
-  step_up: "/assets/exercises/step_up.webp",
-  calf_raise: "/assets/exercises/calf_raise.webp",
-  leg_abduction: "/assets/exercises/leg_abduction.webp",
-  back_extension: "/assets/exercises/back_extension.webp",
-  dumbbell_row: "/assets/exercises/dumbbell_row.webp",
-  face_pull: "/assets/exercises/face_pull.webp",
-  rear_delt_fly: "/assets/exercises/rear_delt_fly.webp",
-  shoulder_press: "/assets/exercises/shoulder_press.webp",
-  lateral_raise: "/assets/exercises/lateral_raise.webp",
-  dead_bug: "/assets/exercises/dead_bug.webp",
-  plank: "/assets/exercises/plank.webp"
-});
-
 function exerciseArt(id, large = false) {
-  const src = exerciseVisuals[id] || exerciseVisuals.goblet_squat;
-  return `<img class="exercise-art-image${large ? " is-large" : ""}" src="${src}" alt="Техника выполнения упражнения" ${large ? 'loading="eager"' : 'loading="lazy"'} decoding="async" draggable="false">`;
+  const exercise = state.exercises.find((item) => item.id === id);
+  if (!exercise?.visual) {
+    return `<div class="exercise-art-placeholder${large ? " is-large" : ""}" role="img" aria-label="Визуал упражнения готовится"><span>FORMA</span><small>visual pending</small></div>`;
+  }
+  return `<img class="exercise-art-image${large ? " is-large" : ""}" src="${exercise.visual}" alt="Техника выполнения: ${escapeHtml(exercise.name)}" ${large ? 'loading="eager"' : 'loading="lazy"'} decoding="async" draggable="false">`;
 }
 
 function rpeLabel(value) {
@@ -128,10 +128,9 @@ function painLabel(value) {
   return "Остановиться";
 }
 
-function rotationForWeek(plan, week = plan?.week || 1) {
-  if (!plan?.rotations?.length) return null;
-  const index = Math.min(plan.rotations.length - 1, Math.floor((Math.max(1, week) - 1) / (plan.rotationEveryWeeks || 2)));
-  return plan.rotations[index] || null;
+function phaseForWeek(plan, week = plan?.week || 1) {
+  if (!plan?.weeks?.length) return null;
+  return plan.weeks.find((item) => item.week === Math.max(1, Number(week) || 1)) || plan.weeks[0] || null;
 }
 
 function copySuggestedWeights(fromPlan, toPlan) {
@@ -140,12 +139,17 @@ function copySuggestedWeights(fromPlan, toPlan) {
     if (exercise.suggestedWeight) weights.set(exercise.id, Math.max(weights.get(exercise.id) || 0, exercise.suggestedWeight));
   }));
   collect(fromPlan?.workouts);
-  (fromPlan?.rotations || []).forEach((rotation) => collect(rotation.workouts));
+  (fromPlan?.weeks || []).forEach((week) => collect(week.workouts));
+
   const apply = (workouts = []) => workouts.forEach((workout) => (workout.exercises || []).forEach((exercise) => {
-    if (weights.has(exercise.id)) exercise.suggestedWeight = weights.get(exercise.id);
+    if (!weights.has(exercise.id)) return;
+    exercise.suggestedWeight = weights.get(exercise.id);
+    if (exercise.unit === "кг") {
+      exercise.plannedWeight = Math.round(exercise.suggestedWeight * (exercise.loadMultiplier || 1) * 2) / 2;
+    }
   }));
   apply(toPlan?.workouts);
-  (toPlan?.rotations || []).forEach((rotation) => apply(rotation.workouts));
+  (toPlan?.weeks || []).forEach((week) => apply(week.workouts));
 }
 
 function getTodayWorkout() {
@@ -176,11 +180,14 @@ function renderOnboarding() {
     age: "",
     height: "",
     weight: "",
+    sex: "unspecified",
     goal: "",
+    focus: "balanced",
     level: "beginner",
     daysPerWeek: 3,
     duration: 45,
-    equipment: ["gym"],
+    trainingLocation: "gym",
+    equipment: ["bodyweight", "dumbbells", "barbell", "cable", "machine"],
     trainingDays: [0, 2, 4]
   };
   state.profileDraft = draft;
@@ -191,46 +198,60 @@ function renderOnboarding() {
       <div class="onboarding-card glass-panel">
         <p class="eyebrow">Начнём с основы</p>
         <h1>Расскажи немного о себе</h1>
-        <p class="subtle">Эти данные нужны для стартовой нагрузки и безопасного объёма.</p>
+        <p class="subtle">Возраст и параметры влияют на стартовую нагрузку. Пол сохраняем как часть профиля, без стереотипных коэффициентов силы.</p>
         <div class="form-grid">
           <div class="field full"><label>Имя</label><input id="name" autocomplete="name" placeholder="Например, Иван" value="${escapeHtml(draft.name)}" /></div>
           <div class="field"><label>Возраст</label><input id="age" inputmode="numeric" placeholder="30" value="${escapeHtml(draft.age)}" /></div>
+          <div class="field"><label>Пол</label><select id="sex"><option value="unspecified" ${draft.sex === "unspecified" ? "selected" : ""}>Не указывать</option><option value="female" ${draft.sex === "female" ? "selected" : ""}>Женский</option><option value="male" ${draft.sex === "male" ? "selected" : ""}>Мужской</option></select></div>
           <div class="field"><label>Рост, см</label><input id="height" inputmode="decimal" placeholder="175" value="${escapeHtml(draft.height)}" /></div>
-          <div class="field full"><label>Вес, кг</label><input id="weight" inputmode="decimal" placeholder="75" value="${escapeHtml(draft.weight)}" /></div>
+          <div class="field"><label>Вес, кг</label><input id="weight" inputmode="decimal" placeholder="75" value="${escapeHtml(draft.weight)}" /></div>
         </div>
       </div>
       <div class="onboarding-actions single"><button class="primary-button wide" data-onboarding="next">Продолжить ${icons.arrow}</button></div>
     </section>`;
   } else if (step === 2) {
     const options = [
-      ["strength", "⚡️", "Стать сильнее", "Фокус на технике и прогрессии рабочих весов"],
-      ["muscle", "◌", "Набрать мышцы", "Постепенный рост объёма и нагрузки"],
-      ["fat_loss", "↘", "Снизить вес", "Силовая основа и контролируемая плотность"],
-      ["wellness", "✦", "Тонус и самочувствие", "Умеренная нагрузка без перегруза"]
+      ["strength", "⚡️", "Стать сильнее", "Ниже повторения, больше отдыха, прогрессия без форсирования"],
+      ["muscle", "◌", "Набрать мышцы", "Объём, диапазоны повторений и double progression"],
+      ["fat_loss", "↘", "Снизить вес", "Силовая основа и умеренная плотность работы"],
+      ["endurance", "∞", "Выносливость", "Больше повторений и короче отдых"],
+      ["functional", "◇", "Функциональная форма", "Устойчивость, односторонняя работа и всё тело"],
+      ["posture", "↟", "Осанка и спина", "Тяги, лопатки, задняя дельта и контроль корпуса"],
+      ["return", "↺", "Вернуться после перерыва", "Меньше объёма, умеренный RPE, техника прежде нагрузки"],
+      ["wellness", "✦", "Тонус и самочувствие", "Сбалансированная нагрузка без перегруза"]
     ];
     root.innerHTML = `<section class="onboarding">
       <div class="onboarding-top"><button class="text-button" data-onboarding="back">← Назад</button><span class="step-counter">2 из 3</span></div>
       <div class="onboarding-card glass-panel">
         <p class="eyebrow">Главный ориентир</p>
-        <h1>Какая цель сейчас важнее?</h1>
-        <p class="subtle">План можно изменить позже — история и прогресс сохранятся.</p>
+        <h1>Что сейчас важнее?</h1>
+        <p class="subtle">Цель меняет объём, диапазоны повторений, отдых и схему недели — а не просто подпись на карточке.</p>
         <div class="choice-grid">${options.map(([id, icon, title, text]) => `<button class="choice-card ${draft.goal === id ? "selected" : ""}" data-goal="${id}"><span class="choice-icon">${icon}</span><b>${title}</b><small>${text}</small></button>`).join("")}</div>
       </div>
       <div class="onboarding-actions"><button class="secondary-button" data-onboarding="back">Назад</button><button class="primary-button" data-onboarding="next">Продолжить ${icons.arrow}</button></div>
     </section>`;
   } else {
-    const equip = [["gym", "Тренажёрный зал"], ["home", "Дом"], ["dumbbells", "Только гантели"], ["bodyweight", "Без оборудования"]];
+    const locations = [["gym", "Зал", "Полный набор оборудования"], ["home", "Дом", "Только отмеченное ниже"], ["mixed", "Дом + зал", "Оборудование зависит от конкретной сессии"]];
+    const equipment = [["bodyweight", "Собственный вес"], ["dumbbells", "Гантели"], ["barbell", "Штанга"], ["cable", "Блочный тренажёр"], ["machine", "Тренажёры"]];
+    const focuses = [["balanced", "Баланс"], ["glutes", "Ягодицы / ноги"], ["upper", "Верх тела"], ["posture", "Спина / осанка"]];
+    const dayNames = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"];
     root.innerHTML = `<section class="onboarding">
       <div class="onboarding-top"><button class="text-button" data-onboarding="back">← Назад</button><span class="step-counter">3 из 3</span></div>
       <div class="onboarding-card glass-panel">
         <p class="eyebrow">Режим тренировок</p>
-        <h1>Соберём удобный график</h1>
+        <h1>Соберём реальный график</h1>
         <div class="form-grid">
           <div class="field full"><label>Уровень</label><select id="level"><option value="beginner" ${draft.level === "beginner" ? "selected" : ""}>Начинающий</option><option value="intermediate" ${draft.level === "intermediate" ? "selected" : ""}>Средний</option><option value="advanced" ${draft.level === "advanced" ? "selected" : ""}>Продвинутый</option></select></div>
           <div class="field"><label>Дней в неделю</label><select id="days"><option ${draft.daysPerWeek == 2 ? "selected" : ""}>2</option><option ${draft.daysPerWeek == 3 ? "selected" : ""}>3</option><option ${draft.daysPerWeek == 4 ? "selected" : ""}>4</option><option ${draft.daysPerWeek == 5 ? "selected" : ""}>5</option></select></div>
           <div class="field"><label>Минут</label><select id="duration"><option ${draft.duration == 30 ? "selected" : ""}>30</option><option ${draft.duration == 45 ? "selected" : ""}>45</option><option ${draft.duration == 60 ? "selected" : ""}>60</option></select></div>
+          <div class="field full"><label>Акцент</label><select id="focus">${focuses.map(([id, label]) => `<option value="${id}" ${draft.focus === id ? "selected" : ""}>${label}</option>`).join("")}</select></div>
         </div>
-        <div class="choice-grid">${equip.map(([id, title]) => `<button class="choice-card ${draft.equipment.includes(id) ? "selected" : ""}" data-equipment="${id}"><span class="choice-icon">✓</span><b>${title}</b><small>${id === "gym" ? "Все тренажёры и свободные веса" : "План будет отфильтрован по доступной нагрузке"}</small></button>`).join("")}</div>
+        <p class="choice-label">Где тренируешься</p>
+        <div class="choice-grid compact-grid">${locations.map(([id, title, text]) => `<button class="choice-card ${draft.trainingLocation === id ? "selected" : ""}" data-location="${id}"><span class="choice-icon">◎</span><b>${title}</b><small>${text}</small></button>`).join("")}</div>
+        <p class="choice-label">Доступное оборудование</p>
+        <div class="choice-grid compact-grid">${equipment.map(([id, title]) => `<button class="choice-card ${draft.equipment.includes(id) ? "selected" : ""}" data-equipment="${id}"><span class="choice-icon">✓</span><b>${title}</b><small>Можно выбрать несколько вариантов</small></button>`).join("")}</div>
+        <p class="choice-label">Тренировочные дни <small>выбери ${draft.daysPerWeek}</small></p>
+        <div class="day-selector">${dayNames.map((name, index) => `<button class="day-choice ${draft.trainingDays.includes(index) ? "selected" : ""}" data-training-day="${index}">${name}</button>`).join("")}</div>
       </div>
       <div class="onboarding-actions"><button class="secondary-button" data-onboarding="back">Назад</button><button class="primary-button" data-onboarding="finish">Создать план</button></div>
     </section>`;
@@ -242,37 +263,45 @@ function renderHome() {
   $(".bottom-nav").hidden = false;
   const workout = getTodayWorkout();
   const completed = state.logs.length;
-  const streak = Math.min(9, completed + 2);
-  const readiness = state.analyses.at(-1)?.metrics?.readiness || 76;
+  const latestAnalysis = state.analyses.at(-1) || null;
+  const readiness = latestAnalysis?.metrics?.readiness ?? null;
+  const latestSleep = state.logs.at(-1)?.readiness?.sleep ?? null;
+  const completedThisWeek = (state.plan?.workouts || []).filter((item) => item.status === "done").length;
+  const avgTargetRpe = workout?.exercises?.length
+    ? (workout.exercises.reduce((sum, item) => sum + Number(item.rpeTarget || 7), 0) / workout.exercises.length).toFixed(1).replace(".0", "")
+    : "—";
+  const hour = new Date().getHours();
+  const greeting = hour < 12 ? "Доброе утро" : hour < 18 ? "Добрый день" : "Добрый вечер";
+  const readinessValue = readiness ?? 0;
   root.innerHTML = `<section>
-    <p class="eyebrow">Добрый вечер, ${escapeHtml(state.profile.name || "спортсмен")}</p>
-    <h1>Тело готово<br>к движению</h1>
-    <p class="subtle">Сегодня без гонки за цифрами: качественные повторения и запас сил.</p>
+    <p class="eyebrow">${greeting}, ${escapeHtml(state.profile.name || "спортсмен")}</p>
+    <h1>${workout ? "Сегодня работаем<br>по плану" : "Сегодня<br>восстановление"}</h1>
+    <p class="subtle">${workout ? `${escapeHtml(workout.phaseLabel || "Рабочая неделя")} · выполняй заданный диапазон, а не гоняйся за весом.` : "Следующая нагрузка появится по расписанию цикла."}</p>
 
     <article class="hero-card glass-panel">
       <div class="hero-top"><span class="goal-pill"><i></i>${escapeHtml(state.plan.goalLabel)}</span>
-        <div class="readiness"><svg viewBox="0 0 64 64"><circle class="track" cx="32" cy="32" r="28"/><circle class="value" cx="32" cy="32" r="28" style="stroke-dashoffset:${176 - 1.76 * readiness}"/></svg><div class="readiness-text">${readiness}<small>готовность</small></div></div>
+        <div class="readiness"><svg viewBox="0 0 64 64"><circle class="track" cx="32" cy="32" r="28"/><circle class="value" cx="32" cy="32" r="28" style="stroke-dashoffset:${176 - 1.76 * readinessValue}"/></svg><div class="readiness-text">${readiness ?? "—"}<small>готовность</small></div></div>
       </div>
       <h2>${escapeHtml(workout?.title || "Восстановление")}</h2>
-      <div class="hero-meta"><span>${workout?.duration || 30} мин</span><span>•</span><span>${workout?.exercises?.length || 0} упражнений</span><span>•</span><span>RPE 7</span></div>
-      <div class="hero-action"><button class="primary-button" data-action="start-workout">${icons.play} Начать тренировку</button><span class="subtle">${workout?.dayName || "Сегодня"}</span></div>
+      <div class="hero-meta"><span>${workout?.duration || 0} мин</span><span>•</span><span>${workout?.exercises?.length || 0} упражнений</span><span>•</span><span>RPE ${avgTargetRpe}</span></div>
+      <div class="hero-action">${workout ? `<button class="primary-button" data-action="start-workout">${icons.play} Начать тренировку</button>` : ""}<span class="subtle">${workout?.dayName || "Отдых"}</span></div>
     </article>
 
-    <div class="section-head"><h2>Твоя неделя</h2><button class="text-button" data-action="plan">Открыть план</button></div>
+    <div class="section-head"><h2>Факты</h2><button class="text-button" data-action="plan">Открыть план</button></div>
     <div class="stat-grid">
-      <div class="stat-card glass-panel"><span class="stat-icon">${icons.dumbbell}</span><b>${completed}</b><small>тренировок</small></div>
-      <div class="stat-card glass-panel"><span class="stat-icon">${icons.flame}</span><b>${streak}</b><small>дней серии</small></div>
-      <div class="stat-card glass-panel"><span class="stat-icon">${icons.moon}</span><b>7.4</b><small>часов сна</small></div>
+      <div class="stat-card glass-panel"><span class="stat-icon">${icons.dumbbell}</span><b>${completed}</b><small>завершено всего</small></div>
+      <div class="stat-card glass-panel"><span class="stat-icon">${icons.flame}</span><b>${completedThisWeek}/${state.plan?.daysPerWeek || 0}</b><small>сессий недели</small></div>
+      <div class="stat-card glass-panel"><span class="stat-icon">${icons.moon}</span><b>${latestSleep ?? "—"}</b><small>${latestSleep ? "сон, оценка" : "сон ещё не записан"}</small></div>
     </div>
 
-    <div class="section-head"><h2>Сегодня</h2><button class="text-button" data-action="start-workout">Все упражнения</button></div>
-    <div>${(workout?.exercises || []).slice(0, 3).map((exercise) => `<article class="workout-card glass-panel" data-exercise="${exercise.id}"><div class="exercise-thumb">${exerciseArt(exercise.id)}</div><div class="workout-info"><h3>${escapeHtml(exercise.name)}</h3><p>${exercise.sets} подхода · ${escapeHtml(exercise.target)} · ${exercise.rest} сек.</p></div><button class="chevron">${icons.arrow}</button></article>`).join("")}</div>
+    <div class="section-head"><h2>Сегодня</h2>${workout ? `<button class="text-button" data-action="start-workout">Все упражнения</button>` : ""}</div>
+    <div>${(workout?.exercises || []).slice(0, 3).map((exercise) => `<article class="workout-card glass-panel" data-exercise="${exercise.id}"><div class="exercise-thumb">${exerciseArt(exercise.id)}</div><div class="workout-info"><h3>${escapeHtml(exercise.name)}</h3><p>${exercise.sets} подхода · ${escapeHtml(exercise.target)} · ${exercise.rest} сек.</p></div><button class="chevron">${icons.arrow}</button></article>`).join("") || `<article class="empty-state glass-panel"><div class="emoji">🌿</div><h3>День восстановления</h3><p class="subtle">Без фальшивой активности: сегодня в цикле нет тренировки.</p></article>`}</div>
   </section>`;
 }
 
 function renderPlan() {
   const plan = state.plan;
-  const currentRotation = rotationForWeek(plan);
+  const currentPhase = phaseForWeek(plan);
   const weekDays = ["Пн","Вт","Ср","Чт","Пт","Сб","Вс"];
   const workoutByDay = new Map((plan.workouts || []).map((workout) => [workout.dayIndex, workout]));
   root.innerHTML = `<section class="plan-screen">
@@ -282,16 +311,18 @@ function renderPlan() {
     </div>
 
     <div class="plan-policy-grid">
-      <article class="policy-card sport-card"><span class="policy-icon">${icons.rotate}</span><div><b>Смена упражнений<br>каждые ${plan.rotationEveryWeeks || 2} недели</b><small>${escapeHtml(currentRotation?.label || "Текущий блок")} · паттерны сохраняются</small></div></article>
-      <article class="policy-card sport-card"><span class="policy-icon warm">${icons.spark}</span><div><b>Полное обновление<br>каждые ${plan.cycleWeeks || 8} недель</b><small>Новый цикл с другими акцентами и вариациями</small></div></article>
+      <article class="policy-card sport-card"><span class="policy-icon">${icons.spark}</span><div><b>${escapeHtml(currentPhase?.phaseLabel || "Периодизация")}</b><small>RPE ${currentPhase?.rpeTarget ?? "—"} · объём ×${currentPhase?.volumeMultiplier ?? "—"}</small></div></article>
+      <article class="policy-card sport-card"><span class="policy-icon warm">${icons.rotate}</span><div><b>Вариации без хаоса</b><small>Движения меняются блоками, паттерны и прогресс сохраняются</small></div></article>
     </div>
 
-    <div class="section-head compact"><div><p class="eyebrow">Ближайшие тренировки</p><h2>Эта неделя</h2></div><span class="rotation-badge">Блок ${plan.rotationIndex + 1 || 1} / ${plan.rotationBlocks || 4}</span></div>
+    <div class="phase-strip">${(plan.weeks || []).map((week) => `<span class="phase-node ${week.week === plan.week ? "active" : ""} ${week.week < plan.week ? "done" : ""}"><b>${week.week}</b><small>${escapeHtml(week.phaseLabel)}</small></span>`).join("")}</div>
 
-    ${(plan.workouts || []).map((workout, index) => `<article class="plan-card premium-card ${workout.status === "today" ? "today" : ""}">
+    <div class="section-head compact"><div><p class="eyebrow">${escapeHtml(plan.schemeLabel || "Схема")}</p><h2>Эта неделя</h2></div><span class="rotation-badge">${escapeHtml(currentPhase?.phaseLabel || "Фаза")}</span></div>
+
+    ${(plan.workouts || []).map((workout) => `<article class="plan-card premium-card ${workout.status === "today" ? "today" : ""}">
       <div class="plan-card-head"><div><div class="day-title"><span class="day-badge">${workout.dayName}</span><h3>${escapeHtml(workout.title)}</h3><span class="duration-pill">${workout.duration} мин</span></div><p class="subtle">${escapeHtml(workout.focus)}</p></div><span class="workout-state ${workout.status}">${workout.status === "done" ? icons.check : workout.exercises.length}</span></div>
-      <div class="exercise-preview-row">${workout.exercises.slice(0,4).map((exercise) => `<button class="exercise-preview" data-exercise="${exercise.id}" aria-label="${escapeHtml(exercise.name)}"><span class="exercise-preview-art">${exerciseArt(exercise.id)}</span><b>${escapeHtml(exercise.name)}</b><small>${exercise.sets}×${escapeHtml(exercise.target)}</small></button>`).join("")}</div>
-      <div class="plan-card-footer"><span>${workout.exercises.length} упражнений</span>${workout.status === "today" ? `<button class="start-inline" data-action="start-workout">${icons.play} Начать</button>` : `<span class="focus-label">${escapeHtml(workout.focus.split(" · ")[0])}</span>`}</div>
+      <div class="exercise-preview-row">${workout.exercises.slice(0,4).map((exercise) => `<button class="exercise-preview" data-exercise="${exercise.id}" aria-label="${escapeHtml(exercise.name)}"><span class="exercise-preview-art">${exerciseArt(exercise.id)}</span><b>${escapeHtml(exercise.name)}</b><small>${exercise.sets}×${escapeHtml(exercise.target)} · RPE ${exercise.rpeTarget}</small></button>`).join("")}</div>
+      <div class="plan-card-footer"><span>${workout.exercises.length} упражнений</span>${workout.status === "today" ? `<button class="start-inline" data-action="start-workout">${icons.play} Начать</button>` : `<span class="focus-label">${escapeHtml(workout.phaseLabel || "")}</span>`}</div>
     </article>`).join("")}
 
     <div class="section-head compact"><div><p class="eyebrow">Расписание недели</p><h2>Ритм и восстановление</h2></div></div>
@@ -300,7 +331,7 @@ function renderPlan() {
       return `<div class="schedule-day ${workout ? "training" : "rest"}"><b>${dayName}</b><span>${workout ? escapeHtml(workout.title) : "Отдых"}</span></div>`;
     }).join("")}</div>
 
-    <article class="analysis-card premium-card"><span class="analysis-state">Умная прогрессия</span><h3>План меняется по факту, а не по календарю</h3><p class="subtle">Вес, повторения и следующие нагрузки учитывают завершённость подходов, RPE, боль и восстановление. Смена упражнений каждые две недели не сбрасывает накопленную прогрессию.</p></article>
+    <article class="analysis-card premium-card"><span class="analysis-state">Constraint engine</span><h3>UI больше не хранит готовую программу</h3><p class="subtle">Упражнения подбираются по паттернам, целевым мышцам, уровню и фактически доступному оборудованию. Если подходящей безопасной вариации нет, движок не проталкивает несовместимое упражнение fallback-ом.</p></article>
   </section>`;
 }
 
@@ -311,11 +342,11 @@ function initActiveWorkout() {
   source.exercises.forEach((exercise) => {
     exercise.setLogs = Array.from({ length: exercise.sets }, (_, index) => ({
       set: index + 1,
-      weight: exercise.suggestedWeight || "",
-      reps: parseInt(exercise.target, 10) || 10,
+      weight: exercise.plannedWeight || exercise.suggestedWeight || "",
+      reps: exercise.repRange?.min || parseInt(exercise.target, 10) || 10,
       done: false
     }));
-    exercise.rpe = 7;
+    exercise.rpe = Number(exercise.rpeTarget || 7);
     exercise.pain = 0;
   });
   state.activeWorkout = source;
@@ -350,19 +381,49 @@ function renderWorkout() {
   state.timerId = setInterval(() => { const timer = $("#workoutTimer"); if (timer) timer.textContent = formatTimer(); }, 1000);
 }
 
+function exactTrainingVolume(log) {
+  if (!log?.entries?.length) return null;
+  let hasSetData = false;
+  let volume = 0;
+  for (const entry of log.entries) {
+    if (!Array.isArray(entry.sets)) continue;
+    hasSetData = true;
+    for (const set of entry.sets) {
+      if (set.done === false) continue;
+      volume += (Number(set.weight) || 0) * (Number(set.reps) || 0);
+    }
+  }
+  return hasSetData ? Math.round(volume) : null;
+}
+
 function renderProgress() {
-  const latest = state.analyses.at(-1);
-  const values = state.logs.length ? [38, 46, 51, 58, 61, 69, Math.min(88, 72 + state.logs.length * 2)] : [35, 40, 46, 51, 58, 63, 68];
-  const points = values.map((v, i) => `${20 + i * 50},${145 - v}`).join(" ");
+  const latest = state.analyses.at(-1) || null;
+  const volumeSeries = state.logs
+    .map((log) => ({ log, volume: exactTrainingVolume(log) }))
+    .filter((item) => item.volume !== null && item.volume > 0)
+    .slice(-8);
+  const volumes = volumeSeries.map((item) => item.volume);
+  const min = volumes.length ? Math.min(...volumes) : 0;
+  const max = volumes.length ? Math.max(...volumes) : 0;
+  const range = Math.max(1, max - min);
+  const points = volumes.map((value, index) => {
+    const x = volumes.length === 1 ? 170 : 20 + index * (300 / (volumes.length - 1));
+    const y = 145 - ((value - min) / range) * 105;
+    return `${x.toFixed(1)},${y.toFixed(1)}`;
+  });
+  const trend = volumes.length >= 2 && volumes[0] > 0 ? Math.round(((volumes.at(-1) - volumes[0]) / volumes[0]) * 100) : null;
+  const trendText = trend === null ? "нужно минимум 2 тренировки с весами" : `${trend > 0 ? "+" : ""}${trend}% за доступный период`;
+  const stateLabels = { progress: "+ нагрузка", reps: "+ повторения", deload: "облегчить", reduce: "замена", maintain: "закрепить" };
+
   root.innerHTML = `<section>
-    <p class="eyebrow">Аналитика цикла</p><h1>Твой прогресс</h1><p class="subtle">Смотрим не только на вес, но и на качество, регулярность и восстановление.</p>
-    <article class="progress-hero glass-panel"><div class="plan-card-head"><div><p class="eyebrow">Тренировочный объём</p><h2>+${12 + state.logs.length * 3}%</h2><p class="subtle">за последние четыре недели</p></div><span class="status-pill"><i></i>стабильно</span></div>
-      <div class="chart-wrap"><svg viewBox="0 0 340 170" preserveAspectRatio="none"><defs><linearGradient id="chartGradient" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="rgba(118,138,121,.28)"/><stop offset="1" stop-color="rgba(118,138,121,0)"/></linearGradient></defs><path class="chart-grid" d="M20 35H320M20 85H320M20 135H320"/><path class="chart-area" d="M${points} L320 155 L20 155 Z"/><polyline class="chart-line" points="${points}"/>${values.map((v,i) => `<circle class="chart-dot" cx="${20+i*50}" cy="${145-v}" r="5"/>`).join("")}</svg></div>
+    <p class="eyebrow">Аналитика цикла</p><h1>Твой прогресс</h1><p class="subtle">Здесь нет декоративных процентов: показываем только то, что реально записано в журнале.</p>
+    <article class="progress-hero glass-panel"><div class="plan-card-head"><div><p class="eyebrow">Рабочий объём</p><h2>${volumes.length ? `${volumes.at(-1).toLocaleString("ru-RU")} кг·повт.` : "Нет данных"}</h2><p class="subtle">${trendText}</p></div><span class="status-pill"><i></i>${volumes.length >= 2 ? "по журналу" : "собираем данные"}</span></div>
+      ${volumes.length >= 2 ? `<div class="chart-wrap"><svg viewBox="0 0 340 170" preserveAspectRatio="none"><defs><linearGradient id="chartGradient" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="rgba(118,138,121,.28)"/><stop offset="1" stop-color="rgba(118,138,121,0)"/></linearGradient></defs><path class="chart-grid" d="M20 35H320M20 85H320M20 135H320"/><path class="chart-area" d="M${points.join(" L")} L320 155 L20 155 Z"/><polyline class="chart-line" points="${points.join(" ")}"/>${points.map((point) => { const [cx, cy] = point.split(","); return `<circle class="chart-dot" cx="${cx}" cy="${cy}" r="5"/>`; }).join("")}</svg></div>` : `<div class="analytics-empty">После двух тренировок с записанными весами появится реальный график объёма.</div>`}
     </article>
     <div class="section-head"><h2>Ключевые показатели</h2></div>
-    <div class="stat-grid"><div class="stat-card glass-panel"><b>${state.logs.length}</b><small>завершено</small></div><div class="stat-card glass-panel"><b>${latest?.metrics?.avgRpe || "7.2"}</b><small>средний RPE</small></div><div class="stat-card glass-panel"><b>${latest?.metrics?.readiness || 76}%</b><small>готовность</small></div></div>
+    <div class="stat-grid"><div class="stat-card glass-panel"><b>${state.logs.length}</b><small>завершено</small></div><div class="stat-card glass-panel"><b>${latest?.metrics?.avgRpe ?? "—"}</b><small>средний RPE</small></div><div class="stat-card glass-panel"><b>${latest?.metrics?.readiness != null ? `${latest.metrics.readiness}%` : "—"}</b><small>готовность</small></div></div>
     <div class="section-head"><h2>История</h2></div>
-    <article class="profile-card glass-panel">${state.logs.length ? state.logs.slice().reverse().map((log) => `<div class="history-row"><div class="history-date">${new Date(log.createdAt).toLocaleDateString("ru-RU", {day:"2-digit", month:"short"})}</div><div><b>${escapeHtml(log.title)}</b><small>${log.entries.length} упражнений · ${Math.round(log.duration/60)} мин</small></div><span class="trend-up">${log.analysisState === "progress" ? "+ вес" : "готово"}</span></div>`).join("") : `<div class="empty-state"><div class="emoji">📈</div><h3>Первая точка появится после тренировки</h3><p class="subtle">Журнал уже готов фиксировать веса и повторения.</p></div>`}</article>
+    <article class="profile-card glass-panel">${state.logs.length ? state.logs.slice().reverse().map((log) => `<div class="history-row"><div class="history-date">${new Date(log.createdAt).toLocaleDateString("ru-RU", {day:"2-digit", month:"short"})}</div><div><b>${escapeHtml(log.title)}</b><small>${log.entries.length} упражнений · ${Math.round(log.duration/60)} мин${exactTrainingVolume(log) != null ? ` · ${exactTrainingVolume(log).toLocaleString("ru-RU")} кг·повт.` : ""}</small></div><span class="trend-up">${escapeHtml(stateLabels[log.analysisState] || "готово")}</span></div>`).join("") : `<div class="empty-state"><div class="emoji">📈</div><h3>Первая точка появится после тренировки</h3><p class="subtle">Журнал фиксирует реальные подходы, веса, повторения и RPE.</p></div>`}</article>
   </section>`;
 }
 
@@ -397,13 +458,26 @@ function openProfile() {
   modalRoot.innerHTML = `<div class="modal-backdrop" data-close-modal><section class="bottom-sheet"><div class="sheet-handle"></div><div class="sheet-head"><div><p class="eyebrow">Профиль</p><h2>${escapeHtml(state.profile.name)}</h2></div><button class="close-button" data-close-modal>×</button></div><article class="profile-card glass-panel" style="margin-top:14px"><div class="form-grid"><div class="field"><label>Рост</label><input value="${state.profile.height} см" disabled></div><div class="field"><label>Вес</label><input value="${state.profile.weight} кг" disabled></div><div class="field"><label>Тренировок</label><input value="${state.profile.daysPerWeek} / нед." disabled></div><div class="field"><label>Длительность</label><input value="${state.profile.duration} мин" disabled></div></div></article><button class="secondary-button wide" style="width:100%;margin-top:12px" data-action="reset-app">Сбросить демо-данные</button><p class="subtle" style="margin:14px 4px 0">FORMA AI v${escapeHtml(state.config.version)} · данные хранятся локально на устройстве.</p></section></div>`;
 }
 
-async function finishOnboarding() {
+function syncScheduleDraftFromForm() {
   const draft = state.profileDraft;
+  if (!draft) return;
   draft.level = $("#level")?.value || draft.level;
   draft.daysPerWeek = Number($("#days")?.value || draft.daysPerWeek);
   draft.duration = Number($("#duration")?.value || draft.duration);
-  if (!draft.equipment.length) draft.equipment = ["bodyweight"];
-  draft.trainingDays = [0,2,4,6,1].slice(0, draft.daysPerWeek);
+  draft.focus = $("#focus")?.value || draft.focus || "balanced";
+  if (!Array.isArray(draft.trainingDays)) draft.trainingDays = [];
+  if (draft.trainingDays.length > draft.daysPerWeek) draft.trainingDays = draft.trainingDays.slice(0, draft.daysPerWeek);
+}
+
+async function finishOnboarding() {
+  const draft = state.profileDraft;
+  syncScheduleDraftFromForm();
+  draft.equipment = [...new Set(draft.equipment || [])];
+  if (!draft.equipment.includes("bodyweight")) draft.equipment.push("bodyweight");
+  if (draft.trainingDays.length !== draft.daysPerWeek) {
+    toast(`Выбери ровно ${draft.daysPerWeek} тренировочных дня`);
+    return;
+  }
   try {
     const { plan } = await api("/api/plan/generate", { method: "POST", body: JSON.stringify({ profile: draft }) });
     state.profile = structuredClone(draft);
@@ -411,7 +485,7 @@ async function finishOnboarding() {
     state.onboardingStep = 1;
     $("#avatarText").textContent = (draft.name || "И").trim().charAt(0).toUpperCase();
     saveState();
-    toast("Персональный план готов");
+    toast("Персональный цикл готов");
     render();
   } catch (error) {
     toast(error.message);
@@ -433,13 +507,15 @@ function openReadinessCheck() {
 }
 
 function applyProgressionToPlan(analysis) {
-  const collections = [state.plan?.workouts || [], ...(state.plan?.rotations || []).map((rotation) => rotation.workouts || [])];
+  const collections = [state.plan?.workouts || [], ...(state.plan?.weeks || []).map((week) => week.workouts || [])];
   for (const recommendation of analysis.recommendations || []) {
     if (!recommendation.nextWeight || recommendation.unit !== "кг") continue;
     for (const workouts of collections) {
       for (const workout of workouts) {
         for (const exercise of workout.exercises || []) {
-          if (exercise.id === recommendation.exerciseId) exercise.suggestedWeight = recommendation.nextWeight;
+          if (exercise.id !== recommendation.exerciseId) continue;
+          exercise.suggestedWeight = recommendation.nextWeight;
+          exercise.plannedWeight = Math.round(recommendation.nextWeight * (exercise.loadMultiplier || 1) * 2) / 2;
         }
       }
     }
@@ -448,11 +524,10 @@ function applyProgressionToPlan(analysis) {
 
 function activatePlanWeek(week) {
   const plan = state.plan;
-  const rotation = rotationForWeek(plan, week);
-  if (!rotation) return;
-  plan.week = week;
-  plan.rotationIndex = Math.floor((week - 1) / (plan.rotationEveryWeeks || 2));
-  plan.workouts = structuredClone(rotation.workouts);
+  const weekData = phaseForWeek(plan, week);
+  if (!weekData) return;
+  plan.week = weekData.week;
+  plan.workouts = structuredClone(weekData.workouts);
   plan.workouts.forEach((workout, index) => { workout.status = index === 0 ? "today" : "planned"; });
 }
 
@@ -486,24 +561,28 @@ async function finishWorkout(readiness = { sleep: 7, energy: 7, mood: 8 }, note 
     exerciseId: exercise.id,
     name: exercise.name,
     unit: exercise.unit,
-    pattern: state.exercises.find((item) => item.id === exercise.id)?.pattern,
+    movementPattern: exercise.movementPattern,
+    exerciseType: exercise.exerciseType,
+    target: exercise.target,
+    repRange: exercise.repRange,
     completed: exercise.setLogs.every((set) => set.done),
+    sets: exercise.setLogs.map((set) => ({ weight: Number(set.weight) || 0, reps: Number(set.reps) || 0, done: Boolean(set.done) })),
+    baseWeight: Number(exercise.suggestedWeight) || 0,
     weight: Math.max(...exercise.setLogs.map((set) => Number(set.weight) || 0)),
-    reps: exercise.setLogs.reduce((sum, set) => sum + Number(set.reps || 0), 0),
     rpe: exercise.rpe,
     pain: exercise.pain,
     painFlag: exercise.pain >= 5
   }));
   try {
-    const { analysis } = await api("/api/workout/analyze", { method: "POST", body: JSON.stringify({ entries, readiness }) });
+    const { analysis } = await api("/api/workout/analyze", { method: "POST", body: JSON.stringify({ entries, readiness, history: state.logs.slice(-12) }) });
     applyProgressionToPlan(analysis);
     const scheduleUpdate = await advancePlanSchedule();
     state.analyses.push(analysis);
-    state.logs.push({ createdAt: new Date().toISOString(), title: workout.title, duration: Math.max(60, (Date.now() - state.workoutStartedAt) / 1000), entries, readiness, note, analysisState: analysis.state });
+    state.logs.push({ createdAt: new Date().toISOString(), title: workout.title, phase: workout.phase, duration: Math.max(60, (Date.now() - state.workoutStartedAt) / 1000), entries, readiness, note, analysisState: analysis.state, metrics: analysis.metrics });
     state.activeWorkout = null;
     state.workoutStartedAt = null;
     saveState();
-    modalRoot.innerHTML = `<div class="modal-backdrop"><section class="bottom-sheet"><div class="sheet-handle"></div><p class="eyebrow">Анализ завершён</p><h2>${escapeHtml(analysis.headline)}</h2><p class="subtle">${escapeHtml(analysis.summary)}</p><span class="analysis-state">${scheduleUpdate.cycleRefreshed ? "Создан новый 8-недельный цикл" : "План и следующие веса обновлены"}</span><div class="analysis-metrics"><div><b>${analysis.metrics.completion}%</b><small>выполнено</small></div><div><b>${analysis.metrics.avgRpe}</b><small>средний RPE</small></div><div><b>${analysis.metrics.readiness}%</b><small>готовность</small></div></div><div class="instruction-box"><h3>Следующая тренировка</h3>${analysis.recommendations.slice(0,3).map((rec) => `<div class="history-row"><div><b>${escapeHtml(rec.name)}</b><small>${escapeHtml(rec.note)}</small></div><span class="trend-up">${escapeHtml(rec.action)}${rec.nextWeight ? ` · ${rec.nextWeight} ${escapeHtml(rec.unit)}` : ""}</span></div>`).join("")}</div><div class="safety-note">${escapeHtml(analysis.safety)}</div><button class="primary-button wide" style="margin-top:13px" data-action="analysis-done">Готово</button></section></div>`;
+    modalRoot.innerHTML = `<div class="modal-backdrop"><section class="bottom-sheet"><div class="sheet-handle"></div><p class="eyebrow">Анализ завершён</p><h2>${escapeHtml(analysis.headline)}</h2><p class="subtle">${escapeHtml(analysis.summary)}</p><span class="analysis-state">${scheduleUpdate.cycleRefreshed ? "Создан новый 8-недельный цикл" : "Double progression применена к плану"}</span><div class="analysis-metrics"><div><b>${analysis.metrics.completion}%</b><small>выполнено</small></div><div><b>${analysis.metrics.avgRpe}</b><small>средний RPE</small></div><div><b>${analysis.metrics.readiness}%</b><small>готовность</small></div></div><div class="instruction-box"><h3>Что меняем дальше</h3>${analysis.recommendations.slice(0,4).map((rec) => `<div class="history-row"><div><b>${escapeHtml(rec.name)}</b><small>${escapeHtml(rec.note)}</small></div><span class="trend-up">${escapeHtml(rec.action)}${rec.nextWeight ? ` · ${rec.nextWeight} ${escapeHtml(rec.unit)}` : ""}</span></div>`).join("")}</div><div class="safety-note">${escapeHtml(analysis.safety)}</div><button class="primary-button wide" style="margin-top:13px" data-action="analysis-done">Готово</button></section></div>`;
   } catch (error) {
     toast(error.message);
   }
@@ -553,9 +632,34 @@ document.addEventListener("click", async (event) => {
     renderOnboarding();
     return;
   }
+  if (target.dataset.location) {
+    syncScheduleDraftFromForm();
+    const id = target.dataset.location;
+    const previousLocation = state.profileDraft.trainingLocation;
+    state.profileDraft.trainingLocation = id;
+    if (id === "gym") state.profileDraft.equipment = ["bodyweight", "dumbbells", "barbell", "cable", "machine"];
+    if (id === "home" && previousLocation === "gym") state.profileDraft.equipment = ["bodyweight"];
+    if (id === "mixed" && previousLocation === "gym") state.profileDraft.equipment = ["bodyweight", "dumbbells"];
+    renderOnboarding();
+    return;
+  }
   if (target.dataset.equipment) {
+    syncScheduleDraftFromForm();
     const id = target.dataset.equipment;
-    state.profileDraft.equipment = state.profileDraft.equipment.includes(id) ? state.profileDraft.equipment.filter((item) => item !== id) : [id];
+    if (id === "bodyweight" && state.profileDraft.equipment.includes(id)) return toast("Собственный вес всегда доступен как безопасный fallback");
+    state.profileDraft.equipment = state.profileDraft.equipment.includes(id)
+      ? state.profileDraft.equipment.filter((item) => item !== id)
+      : [...state.profileDraft.equipment, id];
+    renderOnboarding();
+    return;
+  }
+  if (target.dataset.trainingDay !== undefined) {
+    syncScheduleDraftFromForm();
+    const day = Number(target.dataset.trainingDay);
+    const days = state.profileDraft.trainingDays || [];
+    if (days.includes(day)) state.profileDraft.trainingDays = days.filter((item) => item !== day);
+    else if (days.length < state.profileDraft.daysPerWeek) state.profileDraft.trainingDays = [...days, day].sort((a, b) => a - b);
+    else return toast(`Можно выбрать ${state.profileDraft.daysPerWeek} тренировочных дня`);
     renderOnboarding();
     return;
   }
@@ -563,7 +667,8 @@ document.addEventListener("click", async (event) => {
     if (state.onboardingStep === 1) {
       const fields = ["name", "age", "height", "weight"];
       fields.forEach((id) => { state.profileDraft[id] = $("#" + id)?.value.trim() || ""; });
-      const valid = state.profileDraft.name && Number(state.profileDraft.age) >= 14 && Number(state.profileDraft.height) >= 120 && Number(state.profileDraft.weight) >= 30;
+      state.profileDraft.sex = $("#sex")?.value || "unspecified";
+      const valid = state.profileDraft.name && Number(state.profileDraft.age) >= 14 && Number(state.profileDraft.age) <= 90 && Number(state.profileDraft.height) >= 120 && Number(state.profileDraft.weight) >= 30;
       if (!valid) { fields.forEach((id) => $("#" + id)?.classList.toggle("invalid", !state.profileDraft[id])); toast("Заполни основные параметры"); return; }
     }
     if (state.onboardingStep === 2 && !state.profileDraft.goal) return toast("Выбери основную цель");
@@ -624,7 +729,7 @@ window.addEventListener("beforeinstallprompt", (event) => {
 
 async function ensureCurrentPlanSchema() {
   if (!state.profile) return;
-  const valid = state.plan?.planRevision === 2 && state.plan?.cycleWeeks === 8 && state.plan?.rotationEveryWeeks === 2 && Array.isArray(state.plan?.rotations) && state.plan.rotations.length === 4;
+  const valid = state.plan?.planRevision === 3 && state.plan?.cycleWeeks === 8 && Array.isArray(state.plan?.weeks) && state.plan.weeks.length === 8;
   if (valid) return;
   const previous = state.plan;
   const { plan } = await api("/api/plan/generate", { method: "POST", body: JSON.stringify({ profile: state.profile, cycleNumber: previous?.cycleNumber || 1 }) });
