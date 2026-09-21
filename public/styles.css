@@ -575,3 +575,20 @@ h3 { font-size: 16px; line-height: 1.2; }
   .set-management { grid-template-columns: 1fr; }
   .rest-presets { grid-template-columns: repeat(2, 1fr); }
 }
+
+
+/* UI_CONTRACT_DOCK_V1 — Safari-independent dock */
+
+:root{--dock-bottom:7px;--dock-width:95%;--dock-height:68px}
+@media (min-width:390px) and (max-width:430px){:root{--dock-bottom:2px;--dock-width:87%;--dock-height:68px}}
+@media(max-width:900px){
+  .bottom-nav{
+    position:fixed!important;
+    left:50%!important;
+    right:auto!important;
+    bottom:var(--dock-bottom)!important;
+    width:min(var(--dock-width),640px)!important;
+    height:var(--dock-height)!important;
+    transform:translateX(-50%)!important;
+  }
+}
