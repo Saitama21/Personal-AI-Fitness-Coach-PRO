@@ -3157,6 +3157,15 @@ Object.assign(exerciseMetadata, {
   }
 });
 
+// Bench/rack variants must not be prescribed to a home user with only dumbbells.
+for (const id of ["incline_rear_delt_raise","incline_y_raise","dumbbell_bench_press","incline_dumbbell_press","dumbbell_fly","chest_supported_row","dumbbell_pullover"]) {
+  exerciseMetadata[id].requiredEquipmentOptions = [["dumbbells", "bench"]];
+}
+for (const id of ["barbell_bench_press", "incline_barbell_press"]) {
+  exerciseMetadata[id].requiredEquipmentOptions = [["barbell", "bench", "rack"]];
+}
+exerciseMetadata.heel_taps.movementPattern = "trunk_lateral_flexion";
+
 for (const exercise of Object.values(exercises)) {
   const metadata = exerciseMetadata[exercise.id] || {};
   Object.assign(exercise, {
