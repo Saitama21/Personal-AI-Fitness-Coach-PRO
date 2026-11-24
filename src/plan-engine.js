@@ -10,7 +10,7 @@ import {
 
 const DAY_NAMES = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"];
 const LEVEL_RANK = { beginner: 1, intermediate: 2, advanced: 3 };
-const GYM_EQUIPMENT = ["bodyweight", "dumbbells", "barbell", "cable", "machine"];
+const GYM_EQUIPMENT = ["bodyweight", "dumbbells", "barbell", "cable", "machine", "bench", "rack", "pullup_bar"];
 
 function clamp(value, min, max) {
   return Math.min(max, Math.max(min, value));
