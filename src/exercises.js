@@ -1806,6 +1806,1357 @@ Object.assign(exerciseMetadata, {
   }
 });
 
+Object.assign(exercises, {
+  "front_raise": {
+    "id": "front_raise",
+    "name": "Подъём гантелей перед собой",
+    "muscle": "Передняя дельта",
+    "muscleGroups": [
+      "Передняя дельта",
+      "Средняя дельта"
+    ],
+    "equipment": [
+      "dumbbells",
+      "home",
+      "gym"
+    ],
+    "pattern": "shoulder_flexion",
+    "unit": "кг",
+    "defaultReps": "12–15",
+    "rest": 60,
+    "cues": [
+      "Стой устойчиво.",
+      "поднимай гантели перед собой до уровня плеч.",
+      "опускай медленно."
+    ],
+    "avoid": [
+      "Не раскачивай корпус.",
+      "не поднимай плечи к ушам."
+    ],
+    "contraindication": "При острой боли, головокружении или ухудшении самочувствия прекрати упражнение. При травме согласуй нагрузку со специалистом.",
+    "alternative": "Жим гантелей"
+  },
+  "arnold_press": {
+    "id": "arnold_press",
+    "name": "Жим Арнольда",
+    "muscle": "Передняя дельта",
+    "muscleGroups": [
+      "Передняя дельта",
+      "Трицепс",
+      "Средняя дельта"
+    ],
+    "equipment": [
+      "dumbbells",
+      "home",
+      "gym"
+    ],
+    "pattern": "vertical_push",
+    "unit": "кг",
+    "defaultReps": "8–12",
+    "rest": 90,
+    "cues": [
+      "Начни с гантелей перед плечами.",
+      "плавно разверни ладони и выжми вверх.",
+      "вернись по той же траектории."
+    ],
+    "avoid": [
+      "Не форсируй поворот плеча.",
+      "не прогибай поясницу."
+    ],
+    "contraindication": "При острой боли, головокружении или ухудшении самочувствия прекрати упражнение. При травме согласуй нагрузку со специалистом.",
+    "alternative": "Жим гантелей"
+  },
+  "single_arm_dumbbell_press": {
+    "id": "single_arm_dumbbell_press",
+    "name": "Жим одной гантели стоя",
+    "muscle": "Передняя дельта",
+    "muscleGroups": [
+      "Передняя дельта",
+      "Трицепс",
+      "Средняя дельта"
+    ],
+    "equipment": [
+      "dumbbells",
+      "home",
+      "gym"
+    ],
+    "pattern": "vertical_push",
+    "unit": "кг",
+    "defaultReps": "8–12",
+    "rest": 90,
+    "cues": [
+      "Держи гантель у плеча.",
+      "напряги кор.",
+      "выжми вверх без наклона корпуса."
+    ],
+    "avoid": [
+      "Не отклоняйся вбок.",
+      "не выпячивай рёбра."
+    ],
+    "contraindication": "При острой боли, головокружении или ухудшении самочувствия прекрати упражнение. При травме согласуй нагрузку со специалистом.",
+    "alternative": "Жим двумя гантелями"
+  },
+  "upright_row": {
+    "id": "upright_row",
+    "name": "Тяга гантелей к нижней части груди",
+    "muscle": "Средняя дельта",
+    "muscleGroups": [
+      "Средняя дельта",
+      "Трапеции"
+    ],
+    "equipment": [
+      "dumbbells",
+      "home",
+      "gym"
+    ],
+    "pattern": "shoulder_abduction",
+    "unit": "кг",
+    "defaultReps": "12–15",
+    "rest": 60,
+    "cues": [
+      "Держи гантели перед бёдрами широким хватом.",
+      "веди локти в стороны до комфортной высоты.",
+      "плавно опусти."
+    ],
+    "avoid": [
+      "Не поднимай локти выше плеч.",
+      "не работай через боль."
+    ],
+    "contraindication": "При острой боли, головокружении или ухудшении самочувствия прекрати упражнение. При травме согласуй нагрузку со специалистом.",
+    "alternative": "Подъём гантелей в стороны"
+  },
+  "incline_rear_delt_raise": {
+    "id": "incline_rear_delt_raise",
+    "name": "Разведение гантелей лёжа грудью на наклонной скамье",
+    "muscle": "Задняя дельта",
+    "muscleGroups": [
+      "Задняя дельта",
+      "Ромбовидные"
+    ],
+    "equipment": [
+      "dumbbells",
+      "home",
+      "gym"
+    ],
+    "pattern": "horizontal_abduction",
+    "unit": "кг",
+    "defaultReps": "12–15",
+    "rest": 60,
+    "cues": [
+      "Ляг грудью на устойчивую наклонную скамью.",
+      "разводи слегка согнутые руки в стороны.",
+      "плавно опускай."
+    ],
+    "avoid": [
+      "Не разгибай поясницу.",
+      "не дёргай гантели."
+    ],
+    "contraindication": "При острой боли, головокружении или ухудшении самочувствия прекрати упражнение. При травме согласуй нагрузку со специалистом.",
+    "alternative": "Разведение гантелей в наклоне"
+  },
+  "band_pull_apart": {
+    "id": "band_pull_apart",
+    "name": "Разведение эластичной ленты",
+    "muscle": "Задняя дельта",
+    "muscleGroups": [
+      "Задняя дельта",
+      "Ромбовидные"
+    ],
+    "equipment": [
+      "band",
+      "home",
+      "gym"
+    ],
+    "pattern": "horizontal_abduction",
+    "unit": "повт.",
+    "defaultReps": "12–15",
+    "rest": 60,
+    "cues": [
+      "Держи ленту перед грудью.",
+      "разводи руки в стороны до комфортного натяжения.",
+      "медленно вернись."
+    ],
+    "avoid": [
+      "Не выгибай спину.",
+      "не тяни ленту к лицу."
+    ],
+    "contraindication": "При острой боли, головокружении или ухудшении самочувствия прекрати упражнение. При травме согласуй нагрузку со специалистом.",
+    "alternative": "Разведение гантелей в наклоне"
+  },
+  "incline_y_raise": {
+    "id": "incline_y_raise",
+    "name": "Y-подъём рук на наклонной скамье",
+    "muscle": "Трапеции",
+    "muscleGroups": [
+      "Трапеции",
+      "Задняя дельта"
+    ],
+    "equipment": [
+      "dumbbells",
+      "home",
+      "gym"
+    ],
+    "pattern": "scapular_pull",
+    "unit": "кг",
+    "defaultReps": "12–15",
+    "rest": 60,
+    "cues": [
+      "Ляг грудью на скамью.",
+      "подними лёгкие гантели по диагонали в форме Y.",
+      "опускай подконтрольно."
+    ],
+    "avoid": [
+      "Не пожимай плечами.",
+      "не используй большой вес."
+    ],
+    "contraindication": "При острой боли, головокружении или ухудшении самочувствия прекрати упражнение. При травме согласуй нагрузку со специалистом.",
+    "alternative": "Y-подъём без веса"
+  },
+  "barbell_bench_press": {
+    "id": "barbell_bench_press",
+    "name": "Жим штанги лёжа",
+    "muscle": "Грудные",
+    "muscleGroups": [
+      "Грудные",
+      "Передняя дельта",
+      "Трицепс"
+    ],
+    "equipment": [
+      "barbell",
+      "gym"
+    ],
+    "pattern": "horizontal_push",
+    "unit": "кг",
+    "defaultReps": "8–12",
+    "rest": 90,
+    "cues": [
+      "Используй скамью со страховочными упорами.",
+      "опусти гриф к нижней части груди.",
+      "выжми без отрыва таза."
+    ],
+    "avoid": [
+      "Не отбивай гриф от груди.",
+      "не жми тяжело без страховки."
+    ],
+    "contraindication": "При острой боли, головокружении или ухудшении самочувствия прекрати упражнение. При травме согласуй нагрузку со специалистом.",
+    "alternative": "Жим гантелей лёжа на полу"
+  },
+  "dumbbell_bench_press": {
+    "id": "dumbbell_bench_press",
+    "name": "Жим гантелей лёжа на скамье",
+    "muscle": "Грудные",
+    "muscleGroups": [
+      "Грудные",
+      "Передняя дельта",
+      "Трицепс"
+    ],
+    "equipment": [
+      "dumbbells",
+      "home",
+      "gym"
+    ],
+    "pattern": "horizontal_push",
+    "unit": "кг",
+    "defaultReps": "8–12",
+    "rest": 90,
+    "cues": [
+      "Ляг на устойчивую скамью, стопы на полу.",
+      "опускай гантели к бокам груди.",
+      "выжимай вверх."
+    ],
+    "avoid": [
+      "Не опускай локти чрезмерно глубоко.",
+      "не сталкивай гантели."
+    ],
+    "contraindication": "При острой боли, головокружении или ухудшении самочувствия прекрати упражнение. При травме согласуй нагрузку со специалистом.",
+    "alternative": "Жим гантелей лёжа на полу"
+  },
+  "incline_dumbbell_press": {
+    "id": "incline_dumbbell_press",
+    "name": "Жим гантелей на наклонной скамье",
+    "muscle": "Грудные",
+    "muscleGroups": [
+      "Грудные",
+      "Передняя дельта",
+      "Трицепс"
+    ],
+    "equipment": [
+      "dumbbells",
+      "home",
+      "gym"
+    ],
+    "pattern": "horizontal_push",
+    "unit": "кг",
+    "defaultReps": "8–12",
+    "rest": 90,
+    "cues": [
+      "Установи наклон примерно 15–30°.",
+      "опусти гантели к верхней части груди.",
+      "выжми вверх."
+    ],
+    "avoid": [
+      "Не поднимай плечи к ушам.",
+      "не прогибай поясницу."
+    ],
+    "contraindication": "При острой боли, головокружении или ухудшении самочувствия прекрати упражнение. При травме согласуй нагрузку со специалистом.",
+    "alternative": "Жим гантелей лёжа"
+  },
+  "incline_barbell_press": {
+    "id": "incline_barbell_press",
+    "name": "Жим штанги на наклонной скамье",
+    "muscle": "Грудные",
+    "muscleGroups": [
+      "Грудные",
+      "Передняя дельта",
+      "Трицепс"
+    ],
+    "equipment": [
+      "barbell",
+      "gym"
+    ],
+    "pattern": "horizontal_push",
+    "unit": "кг",
+    "defaultReps": "8–12",
+    "rest": 90,
+    "cues": [
+      "Используй наклонную скамью с упорами.",
+      "опусти гриф к верхней части груди.",
+      "выжми подконтрольно."
+    ],
+    "avoid": [
+      "Не отбивай гриф.",
+      "не работай без страховки."
+    ],
+    "contraindication": "При острой боли, головокружении или ухудшении самочувствия прекрати упражнение. При травме согласуй нагрузку со специалистом.",
+    "alternative": "Наклонный жим гантелей"
+  },
+  "dumbbell_fly": {
+    "id": "dumbbell_fly",
+    "name": "Разведение гантелей лёжа",
+    "muscle": "Грудные",
+    "muscleGroups": [
+      "Грудные",
+      "Передняя дельта"
+    ],
+    "equipment": [
+      "dumbbells",
+      "home",
+      "gym"
+    ],
+    "pattern": "chest_adduction",
+    "unit": "кг",
+    "defaultReps": "12–15",
+    "rest": 60,
+    "cues": [
+      "На устойчивой скамье держи руки над грудью.",
+      "с мягкими локтями разводи их по дуге.",
+      "сведи обратно."
+    ],
+    "avoid": [
+      "Не опускай руки глубже комфортной амплитуды.",
+      "не выпрямляй локти под нагрузкой."
+    ],
+    "contraindication": "При острой боли, головокружении или ухудшении самочувствия прекрати упражнение. При травме согласуй нагрузку со специалистом.",
+    "alternative": "Сведение рук в тренажёре"
+  },
+  "knee_pushup": {
+    "id": "knee_pushup",
+    "name": "Отжимания с колен",
+    "muscle": "Грудные",
+    "muscleGroups": [
+      "Грудные",
+      "Передняя дельта",
+      "Трицепс"
+    ],
+    "equipment": [
+      "bodyweight",
+      "home",
+      "gym"
+    ],
+    "pattern": "horizontal_push",
+    "unit": "повт.",
+    "defaultReps": "8–12",
+    "rest": 90,
+    "cues": [
+      "Поставь ладони под плечами или чуть шире.",
+      "выстрой линию от головы до колен.",
+      "опустись и оттолкнись."
+    ],
+    "avoid": [
+      "Не проваливай поясницу.",
+      "не разводи локти под 90°."
+    ],
+    "contraindication": "При острой боли, головокружении или ухудшении самочувствия прекрати упражнение. При травме согласуй нагрузку со специалистом.",
+    "alternative": "Отжимания от опоры"
+  },
+  "decline_pushup": {
+    "id": "decline_pushup",
+    "name": "Отжимания с ногами на опоре",
+    "muscle": "Грудные",
+    "muscleGroups": [
+      "Грудные",
+      "Передняя дельта",
+      "Трицепс"
+    ],
+    "equipment": [
+      "bodyweight",
+      "home",
+      "gym"
+    ],
+    "pattern": "horizontal_push",
+    "unit": "повт.",
+    "defaultReps": "8–12",
+    "rest": 90,
+    "cues": [
+      "Поставь стопы на низкую устойчивую опору.",
+      "держи корпус ровно.",
+      "опускай грудь к полу и выжимайся."
+    ],
+    "avoid": [
+      "Не используй шаткую опору.",
+      "не прогибай поясницу."
+    ],
+    "contraindication": "При острой боли, головокружении или ухудшении самочувствия прекрати упражнение. При травме согласуй нагрузку со специалистом.",
+    "alternative": "Обычные отжимания"
+  },
+  "dumbbell_squeeze_press": {
+    "id": "dumbbell_squeeze_press",
+    "name": "Жим гантелей с приведением лёжа на полу",
+    "muscle": "Грудные",
+    "muscleGroups": [
+      "Грудные",
+      "Передняя дельта",
+      "Трицепс"
+    ],
+    "equipment": [
+      "dumbbells",
+      "home",
+      "gym"
+    ],
+    "pattern": "horizontal_push",
+    "unit": "кг",
+    "defaultReps": "8–12",
+    "rest": 90,
+    "cues": [
+      "Ляг на пол и соедини гантели над грудью.",
+      "удерживай лёгкое давление между ними.",
+      "опусти и выжми."
+    ],
+    "avoid": [
+      "Не теряй контроль над гантелями.",
+      "не заламывай кисти."
+    ],
+    "contraindication": "При острой боли, головокружении или ухудшении самочувствия прекрати упражнение. При травме согласуй нагрузку со специалистом.",
+    "alternative": "Жим гантелей лёжа на полу"
+  },
+  "chest_supported_row": {
+    "id": "chest_supported_row",
+    "name": "Тяга гантелей с опорой грудью",
+    "muscle": "Ромбовидные",
+    "muscleGroups": [
+      "Ромбовидные",
+      "Бицепс"
+    ],
+    "equipment": [
+      "dumbbells",
+      "home",
+      "gym"
+    ],
+    "pattern": "horizontal_pull",
+    "unit": "кг",
+    "defaultReps": "8–12",
+    "rest": 90,
+    "cues": [
+      "Ляг грудью на наклонную скамью.",
+      "подтяни локти к корпусу.",
+      "плавно распрями руки."
+    ],
+    "avoid": [
+      "Не отрывай грудь от опоры.",
+      "не пожимай плечами."
+    ],
+    "contraindication": "При острой боли, головокружении или ухудшении самочувствия прекрати упражнение. При травме согласуй нагрузку со специалистом.",
+    "alternative": "Тяга гантели одной рукой"
+  },
+  "single_arm_cable_row": {
+    "id": "single_arm_cable_row",
+    "name": "Горизонтальная тяга блока одной рукой",
+    "muscle": "Широчайшие",
+    "muscleGroups": [
+      "Широчайшие",
+      "Бицепс",
+      "Ромбовидные"
+    ],
+    "equipment": [
+      "cable",
+      "gym"
+    ],
+    "pattern": "horizontal_pull",
+    "unit": "кг",
+    "defaultReps": "8–12",
+    "rest": 90,
+    "cues": [
+      "Сядь устойчиво лицом к блоку.",
+      "веди локоть назад.",
+      "верни рукоять без вращения таза."
+    ],
+    "avoid": [
+      "Не раскачивай корпус.",
+      "не дёргай трос."
+    ],
+    "contraindication": "При острой боли, головокружении или ухудшении самочувствия прекрати упражнение. При травме согласуй нагрузку со специалистом.",
+    "alternative": "Горизонтальная тяга блока"
+  },
+  "underhand_pulldown": {
+    "id": "underhand_pulldown",
+    "name": "Тяга верхнего блока обратным хватом",
+    "muscle": "Широчайшие",
+    "muscleGroups": [
+      "Широчайшие",
+      "Бицепс"
+    ],
+    "equipment": [
+      "machine",
+      "gym"
+    ],
+    "pattern": "vertical_pull",
+    "unit": "кг",
+    "defaultReps": "8–12",
+    "rest": 90,
+    "cues": [
+      "Возьмись за рукоять ладонями к себе примерно на ширине плеч.",
+      "тяни локти вниз.",
+      "плавно верни вес."
+    ],
+    "avoid": [
+      "Не тяни за голову.",
+      "не раскачивайся."
+    ],
+    "contraindication": "При острой боли, головокружении или ухудшении самочувствия прекрати упражнение. При травме согласуй нагрузку со специалистом.",
+    "alternative": "Тяга верхнего блока нейтральным хватом"
+  },
+  "wide_grip_seated_row": {
+    "id": "wide_grip_seated_row",
+    "name": "Горизонтальная тяга блока широким хватом",
+    "muscle": "Ромбовидные",
+    "muscleGroups": [
+      "Ромбовидные",
+      "Бицепс"
+    ],
+    "equipment": [
+      "cable",
+      "gym"
+    ],
+    "pattern": "horizontal_pull",
+    "unit": "кг",
+    "defaultReps": "8–12",
+    "rest": 90,
+    "cues": [
+      "Сядь с нейтральной спиной.",
+      "тяни рукоять к нижней части груди, локти умеренно в стороны.",
+      "плавно верни."
+    ],
+    "avoid": [
+      "Не запрокидывай корпус.",
+      "не поднимай плечи."
+    ],
+    "contraindication": "При острой боли, головокружении или ухудшении самочувствия прекрати упражнение. При травме согласуй нагрузку со специалистом.",
+    "alternative": "Горизонтальная тяга блока"
+  },
+  "dumbbell_pullover": {
+    "id": "dumbbell_pullover",
+    "name": "Пуловер с гантелью",
+    "muscle": "Широчайшие",
+    "muscleGroups": [
+      "Широчайшие",
+      "Грудные"
+    ],
+    "equipment": [
+      "dumbbells",
+      "home",
+      "gym"
+    ],
+    "pattern": "shoulder_extension",
+    "unit": "кг",
+    "defaultReps": "12–15",
+    "rest": 60,
+    "cues": [
+      "Ляг на устойчивую скамью.",
+      "удерживай гантель обеими руками.",
+      "опускай за голову до комфортной амплитуды и верни."
+    ],
+    "avoid": [
+      "Не переразгибай поясницу.",
+      "не опускай вес через боль."
+    ],
+    "contraindication": "При острой боли, головокружении или ухудшении самочувствия прекрати упражнение. При травме согласуй нагрузку со специалистом.",
+    "alternative": "Тяга прямыми руками"
+  },
+  "inverted_row": {
+    "id": "inverted_row",
+    "name": "Горизонтальные подтягивания под перекладиной",
+    "muscle": "Широчайшие",
+    "muscleGroups": [
+      "Широчайшие",
+      "Бицепс",
+      "Ромбовидные"
+    ],
+    "equipment": [
+      "machine",
+      "gym"
+    ],
+    "pattern": "horizontal_pull",
+    "unit": "кг",
+    "defaultReps": "8–12",
+    "rest": 90,
+    "cues": [
+      "Используй надёжно закреплённую перекладину.",
+      "держи корпус ровно.",
+      "подтяни грудь к ней и опустись."
+    ],
+    "avoid": [
+      "Не используй незакреплённый гриф.",
+      "не проваливай таз."
+    ],
+    "contraindication": "При острой боли, головокружении или ухудшении самочувствия прекрати упражнение. При травме согласуй нагрузку со специалистом.",
+    "alternative": "Тяга в тренажёре"
+  },
+  "prone_w_raise": {
+    "id": "prone_w_raise",
+    "name": "W-подъём рук лёжа на животе",
+    "muscle": "Ромбовидные",
+    "muscleGroups": [
+      "Ромбовидные",
+      "Задняя дельта"
+    ],
+    "equipment": [
+      "bodyweight",
+      "home",
+      "gym"
+    ],
+    "pattern": "scapular_pull",
+    "unit": "повт.",
+    "defaultReps": "12–15",
+    "rest": 60,
+    "cues": [
+      "Ляг на живот, локти согнуты в форме W.",
+      "слегка приподними руки и сведи лопатки.",
+      "вернись."
+    ],
+    "avoid": [
+      "Не запрокидывай голову.",
+      "не поднимай грудь за счёт поясницы."
+    ],
+    "contraindication": "При острой боли, головокружении или ухудшении самочувствия прекрати упражнение. При травме согласуй нагрузку со специалистом.",
+    "alternative": "Y-подъём без веса"
+  },
+  "russian_twist": {
+    "id": "russian_twist",
+    "name": "Повороты корпуса сидя",
+    "muscle": "Кор",
+    "muscleGroups": [
+      "Кор"
+    ],
+    "equipment": [
+      "bodyweight",
+      "home",
+      "gym"
+    ],
+    "pattern": "trunk_rotation",
+    "unit": "повт.",
+    "defaultReps": "8–12",
+    "rest": 60,
+    "cues": [
+      "Сядь со стопами на полу.",
+      "слегка отклони корпус с нейтральной спиной.",
+      "поворачивай грудную клетку в небольшом диапазоне."
+    ],
+    "avoid": [
+      "Не скручивай поясницу рывком.",
+      "не гонись за амплитудой."
+    ],
+    "contraindication": "При острой боли, головокружении или ухудшении самочувствия прекрати упражнение. При травме согласуй нагрузку со специалистом.",
+    "alternative": "Мёртвый жук"
+  },
+  "mountain_climber": {
+    "id": "mountain_climber",
+    "name": "Альпинист",
+    "muscle": "Кор",
+    "muscleGroups": [
+      "Кор"
+    ],
+    "equipment": [
+      "bodyweight",
+      "home",
+      "gym"
+    ],
+    "pattern": "anti_extension",
+    "unit": "повт.",
+    "defaultReps": "8–12",
+    "rest": 60,
+    "cues": [
+      "Прими упор лёжа.",
+      "поочерёдно подтягивай колени под корпус.",
+      "удерживай таз стабильным."
+    ],
+    "avoid": [
+      "Не проваливай поясницу.",
+      "не прыгай при потере контроля."
+    ],
+    "contraindication": "При острой боли, головокружении или ухудшении самочувствия прекрати упражнение. При травме согласуй нагрузку со специалистом.",
+    "alternative": "Планка"
+  },
+  "hanging_knee_raise": {
+    "id": "hanging_knee_raise",
+    "name": "Подъём коленей в висе",
+    "muscle": "Кор",
+    "muscleGroups": [
+      "Кор"
+    ],
+    "equipment": [
+      "pullup_bar",
+      "gym"
+    ],
+    "pattern": "trunk_flexion",
+    "unit": "повт.",
+    "defaultReps": "8–12",
+    "rest": 60,
+    "cues": [
+      "Повисни на надёжной перекладине.",
+      "подтягивай согнутые колени, слегка подкручивая таз.",
+      "медленно опускай."
+    ],
+    "avoid": [
+      "Не раскачивайся.",
+      "не бросай ноги вниз."
+    ],
+    "contraindication": "При острой боли, головокружении или ухудшении самочувствия прекрати упражнение. При травме согласуй нагрузку со специалистом.",
+    "alternative": "Обратные скручивания"
+  },
+  "hollow_hold": {
+    "id": "hollow_hold",
+    "name": "Удержание полого корпуса",
+    "muscle": "Кор",
+    "muscleGroups": [
+      "Кор"
+    ],
+    "equipment": [
+      "bodyweight",
+      "home",
+      "gym"
+    ],
+    "pattern": "anti_extension",
+    "unit": "сек.",
+    "defaultReps": "20–40",
+    "rest": 60,
+    "cues": [
+      "Ляг на спину.",
+      "мягко прижми поясницу к полу.",
+      "удерживай плечи и ноги приподнятыми в доступной амплитуде."
+    ],
+    "avoid": [
+      "Не задерживай дыхание.",
+      "не отрывай поясницу."
+    ],
+    "contraindication": "При острой боли, головокружении или ухудшении самочувствия прекрати упражнение. При травме согласуй нагрузку со специалистом.",
+    "alternative": "Мёртвый жук"
+  },
+  "heel_taps": {
+    "id": "heel_taps",
+    "name": "Касания пяток лёжа",
+    "muscle": "Кор",
+    "muscleGroups": [
+      "Кор"
+    ],
+    "equipment": [
+      "bodyweight",
+      "home",
+      "gym"
+    ],
+    "pattern": "anti_lateral_flexion",
+    "unit": "повт.",
+    "defaultReps": "8–12",
+    "rest": 60,
+    "cues": [
+      "Ляг с согнутыми коленями.",
+      "слегка подними плечи.",
+      "поочерёдно тянись рукой к пятке небольшим боковым движением."
+    ],
+    "avoid": [
+      "Не тяни голову руками.",
+      "не делай рывков."
+    ],
+    "contraindication": "При острой боли, головокружении или ухудшении самочувствия прекрати упражнение. При травме согласуй нагрузку со специалистом.",
+    "alternative": "Боковая планка с колен"
+  },
+  "plank_shoulder_tap": {
+    "id": "plank_shoulder_tap",
+    "name": "Планка с касанием плеч",
+    "muscle": "Кор",
+    "muscleGroups": [
+      "Кор"
+    ],
+    "equipment": [
+      "bodyweight",
+      "home",
+      "gym"
+    ],
+    "pattern": "anti_rotation",
+    "unit": "повт.",
+    "defaultReps": "8–12",
+    "rest": 60,
+    "cues": [
+      "Встань в упор лёжа, стопы шире таза.",
+      "касайся противоположного плеча.",
+      "удерживай таз неподвижным."
+    ],
+    "avoid": [
+      "Не поворачивай таз.",
+      "не задерживай дыхание."
+    ],
+    "contraindication": "При острой боли, головокружении или ухудшении самочувствия прекрати упражнение. При травме согласуй нагрузку со специалистом.",
+    "alternative": "Планка"
+  },
+  "suitcase_carry": {
+    "id": "suitcase_carry",
+    "name": "Переноска гантели в одной руке",
+    "muscle": "Кор",
+    "muscleGroups": [
+      "Кор"
+    ],
+    "equipment": [
+      "dumbbells",
+      "home",
+      "gym"
+    ],
+    "pattern": "anti_lateral_flexion",
+    "unit": "сек.",
+    "defaultReps": "20–40",
+    "rest": 60,
+    "cues": [
+      "Возьми гантель одной рукой.",
+      "иди короткими контролируемыми шагами.",
+      "держи корпус вертикально."
+    ],
+    "avoid": [
+      "Не наклоняйся к грузу.",
+      "не задерживай дыхание."
+    ],
+    "contraindication": "При острой боли, головокружении или ухудшении самочувствия прекрати упражнение. При травме согласуй нагрузку со специалистом.",
+    "alternative": "Боковая планка"
+  },
+  "bicycle_crunch": {
+    "id": "bicycle_crunch",
+    "name": "Скручивания велосипед",
+    "muscle": "Кор",
+    "muscleGroups": [
+      "Кор"
+    ],
+    "equipment": [
+      "bodyweight",
+      "home",
+      "gym"
+    ],
+    "pattern": "trunk_flexion",
+    "unit": "повт.",
+    "defaultReps": "8–12",
+    "rest": 60,
+    "cues": [
+      "Ляг на спину.",
+      "поочерёдно сближай противоположные плечо и колено.",
+      "выпрямляй другую ногу в доступной амплитуде."
+    ],
+    "avoid": [
+      "Не тяни шею.",
+      "не отрывай поясницу бесконтрольно."
+    ],
+    "contraindication": "При острой боли, головокружении или ухудшении самочувствия прекрати упражнение. При травме согласуй нагрузку со специалистом.",
+    "alternative": "Скручивания"
+  }
+});
+Object.assign(exerciseMetadata, {
+  "front_raise": {
+    "movementPattern": "shoulder_flexion",
+    "primaryMuscle": "Передняя дельта",
+    "difficulty": "beginner",
+    "laterality": "bilateral",
+    "exerciseType": "isolation",
+    "requiredEquipmentOptions": [
+      [
+        "dumbbells"
+      ]
+    ],
+    "progression": "Сначала устойчивое выполнение и повторения, затем небольшое увеличение нагрузки.",
+    "regression": "Жим гантелей",
+    "visualReady": false,
+    "visualIssue": "illustration_pending"
+  },
+  "arnold_press": {
+    "movementPattern": "vertical_push",
+    "primaryMuscle": "Передняя дельта",
+    "difficulty": "intermediate",
+    "laterality": "bilateral",
+    "exerciseType": "compound",
+    "requiredEquipmentOptions": [
+      [
+        "dumbbells"
+      ]
+    ],
+    "progression": "Сначала устойчивое выполнение и повторения, затем небольшое увеличение нагрузки.",
+    "regression": "Жим гантелей",
+    "visualReady": false,
+    "visualIssue": "illustration_pending"
+  },
+  "single_arm_dumbbell_press": {
+    "movementPattern": "vertical_push",
+    "primaryMuscle": "Передняя дельта",
+    "difficulty": "intermediate",
+    "laterality": "unilateral",
+    "exerciseType": "compound",
+    "requiredEquipmentOptions": [
+      [
+        "dumbbells"
+      ]
+    ],
+    "progression": "Сначала устойчивое выполнение и повторения, затем небольшое увеличение нагрузки.",
+    "regression": "Жим двумя гантелями",
+    "visualReady": false,
+    "visualIssue": "illustration_pending"
+  },
+  "upright_row": {
+    "movementPattern": "shoulder_abduction",
+    "primaryMuscle": "Средняя дельта",
+    "difficulty": "intermediate",
+    "laterality": "bilateral",
+    "exerciseType": "accessory",
+    "requiredEquipmentOptions": [
+      [
+        "dumbbells"
+      ]
+    ],
+    "progression": "Сначала устойчивое выполнение и повторения, затем небольшое увеличение нагрузки.",
+    "regression": "Подъём гантелей в стороны",
+    "visualReady": false,
+    "visualIssue": "illustration_pending"
+  },
+  "incline_rear_delt_raise": {
+    "movementPattern": "horizontal_abduction",
+    "primaryMuscle": "Задняя дельта",
+    "difficulty": "beginner",
+    "laterality": "bilateral",
+    "exerciseType": "isolation",
+    "requiredEquipmentOptions": [
+      [
+        "dumbbells"
+      ]
+    ],
+    "progression": "Сначала устойчивое выполнение и повторения, затем небольшое увеличение нагрузки.",
+    "regression": "Разведение гантелей в наклоне",
+    "visualReady": false,
+    "visualIssue": "illustration_pending"
+  },
+  "band_pull_apart": {
+    "movementPattern": "horizontal_abduction",
+    "primaryMuscle": "Задняя дельта",
+    "difficulty": "beginner",
+    "laterality": "bilateral",
+    "exerciseType": "isolation",
+    "requiredEquipmentOptions": [
+      [
+        "band"
+      ]
+    ],
+    "progression": "Сначала устойчивое выполнение и повторения, затем небольшое увеличение нагрузки.",
+    "regression": "Разведение гантелей в наклоне",
+    "visualReady": false,
+    "visualIssue": "illustration_pending"
+  },
+  "incline_y_raise": {
+    "movementPattern": "scapular_pull",
+    "primaryMuscle": "Трапеции",
+    "difficulty": "beginner",
+    "laterality": "bilateral",
+    "exerciseType": "accessory",
+    "requiredEquipmentOptions": [
+      [
+        "dumbbells"
+      ]
+    ],
+    "progression": "Сначала устойчивое выполнение и повторения, затем небольшое увеличение нагрузки.",
+    "regression": "Y-подъём без веса",
+    "visualReady": false,
+    "visualIssue": "illustration_pending"
+  },
+  "barbell_bench_press": {
+    "movementPattern": "horizontal_push",
+    "primaryMuscle": "Грудные",
+    "difficulty": "intermediate",
+    "laterality": "bilateral",
+    "exerciseType": "compound",
+    "requiredEquipmentOptions": [
+      [
+        "barbell"
+      ]
+    ],
+    "progression": "Сначала устойчивое выполнение и повторения, затем небольшое увеличение нагрузки.",
+    "regression": "Жим гантелей лёжа на полу",
+    "visualReady": false,
+    "visualIssue": "illustration_pending"
+  },
+  "dumbbell_bench_press": {
+    "movementPattern": "horizontal_push",
+    "primaryMuscle": "Грудные",
+    "difficulty": "beginner",
+    "laterality": "bilateral",
+    "exerciseType": "compound",
+    "requiredEquipmentOptions": [
+      [
+        "dumbbells"
+      ]
+    ],
+    "progression": "Сначала устойчивое выполнение и повторения, затем небольшое увеличение нагрузки.",
+    "regression": "Жим гантелей лёжа на полу",
+    "visualReady": false,
+    "visualIssue": "illustration_pending"
+  },
+  "incline_dumbbell_press": {
+    "movementPattern": "horizontal_push",
+    "primaryMuscle": "Грудные",
+    "difficulty": "beginner",
+    "laterality": "bilateral",
+    "exerciseType": "compound",
+    "requiredEquipmentOptions": [
+      [
+        "dumbbells"
+      ]
+    ],
+    "progression": "Сначала устойчивое выполнение и повторения, затем небольшое увеличение нагрузки.",
+    "regression": "Жим гантелей лёжа",
+    "visualReady": false,
+    "visualIssue": "illustration_pending"
+  },
+  "incline_barbell_press": {
+    "movementPattern": "horizontal_push",
+    "primaryMuscle": "Грудные",
+    "difficulty": "intermediate",
+    "laterality": "bilateral",
+    "exerciseType": "compound",
+    "requiredEquipmentOptions": [
+      [
+        "barbell"
+      ]
+    ],
+    "progression": "Сначала устойчивое выполнение и повторения, затем небольшое увеличение нагрузки.",
+    "regression": "Наклонный жим гантелей",
+    "visualReady": false,
+    "visualIssue": "illustration_pending"
+  },
+  "dumbbell_fly": {
+    "movementPattern": "chest_adduction",
+    "primaryMuscle": "Грудные",
+    "difficulty": "intermediate",
+    "laterality": "bilateral",
+    "exerciseType": "isolation",
+    "requiredEquipmentOptions": [
+      [
+        "dumbbells"
+      ]
+    ],
+    "progression": "Сначала устойчивое выполнение и повторения, затем небольшое увеличение нагрузки.",
+    "regression": "Сведение рук в тренажёре",
+    "visualReady": false,
+    "visualIssue": "illustration_pending"
+  },
+  "knee_pushup": {
+    "movementPattern": "horizontal_push",
+    "primaryMuscle": "Грудные",
+    "difficulty": "beginner",
+    "laterality": "bilateral",
+    "exerciseType": "compound",
+    "requiredEquipmentOptions": [
+      [
+        "bodyweight"
+      ]
+    ],
+    "progression": "Сначала устойчивое выполнение и повторения, затем небольшое увеличение нагрузки.",
+    "regression": "Отжимания от опоры",
+    "visualReady": false,
+    "visualIssue": "illustration_pending"
+  },
+  "decline_pushup": {
+    "movementPattern": "horizontal_push",
+    "primaryMuscle": "Грудные",
+    "difficulty": "intermediate",
+    "laterality": "bilateral",
+    "exerciseType": "compound",
+    "requiredEquipmentOptions": [
+      [
+        "bodyweight"
+      ]
+    ],
+    "progression": "Сначала устойчивое выполнение и повторения, затем небольшое увеличение нагрузки.",
+    "regression": "Обычные отжимания",
+    "visualReady": false,
+    "visualIssue": "illustration_pending"
+  },
+  "dumbbell_squeeze_press": {
+    "movementPattern": "horizontal_push",
+    "primaryMuscle": "Грудные",
+    "difficulty": "beginner",
+    "laterality": "bilateral",
+    "exerciseType": "compound",
+    "requiredEquipmentOptions": [
+      [
+        "dumbbells"
+      ]
+    ],
+    "progression": "Сначала устойчивое выполнение и повторения, затем небольшое увеличение нагрузки.",
+    "regression": "Жим гантелей лёжа на полу",
+    "visualReady": false,
+    "visualIssue": "illustration_pending"
+  },
+  "chest_supported_row": {
+    "movementPattern": "horizontal_pull",
+    "primaryMuscle": "Ромбовидные",
+    "difficulty": "beginner",
+    "laterality": "bilateral",
+    "exerciseType": "compound",
+    "requiredEquipmentOptions": [
+      [
+        "dumbbells"
+      ]
+    ],
+    "progression": "Сначала устойчивое выполнение и повторения, затем небольшое увеличение нагрузки.",
+    "regression": "Тяга гантели одной рукой",
+    "visualReady": false,
+    "visualIssue": "illustration_pending"
+  },
+  "single_arm_cable_row": {
+    "movementPattern": "horizontal_pull",
+    "primaryMuscle": "Широчайшие",
+    "difficulty": "beginner",
+    "laterality": "unilateral",
+    "exerciseType": "compound",
+    "requiredEquipmentOptions": [
+      [
+        "cable"
+      ]
+    ],
+    "progression": "Сначала устойчивое выполнение и повторения, затем небольшое увеличение нагрузки.",
+    "regression": "Горизонтальная тяга блока",
+    "visualReady": false,
+    "visualIssue": "illustration_pending"
+  },
+  "underhand_pulldown": {
+    "movementPattern": "vertical_pull",
+    "primaryMuscle": "Широчайшие",
+    "difficulty": "beginner",
+    "laterality": "bilateral",
+    "exerciseType": "compound",
+    "requiredEquipmentOptions": [
+      [
+        "machine"
+      ]
+    ],
+    "progression": "Сначала устойчивое выполнение и повторения, затем небольшое увеличение нагрузки.",
+    "regression": "Тяга верхнего блока нейтральным хватом",
+    "visualReady": false,
+    "visualIssue": "illustration_pending"
+  },
+  "wide_grip_seated_row": {
+    "movementPattern": "horizontal_pull",
+    "primaryMuscle": "Ромбовидные",
+    "difficulty": "beginner",
+    "laterality": "bilateral",
+    "exerciseType": "compound",
+    "requiredEquipmentOptions": [
+      [
+        "cable"
+      ]
+    ],
+    "progression": "Сначала устойчивое выполнение и повторения, затем небольшое увеличение нагрузки.",
+    "regression": "Горизонтальная тяга блока",
+    "visualReady": false,
+    "visualIssue": "illustration_pending"
+  },
+  "dumbbell_pullover": {
+    "movementPattern": "shoulder_extension",
+    "primaryMuscle": "Широчайшие",
+    "difficulty": "intermediate",
+    "laterality": "bilateral",
+    "exerciseType": "accessory",
+    "requiredEquipmentOptions": [
+      [
+        "dumbbells"
+      ]
+    ],
+    "progression": "Сначала устойчивое выполнение и повторения, затем небольшое увеличение нагрузки.",
+    "regression": "Тяга прямыми руками",
+    "visualReady": false,
+    "visualIssue": "illustration_pending"
+  },
+  "inverted_row": {
+    "movementPattern": "horizontal_pull",
+    "primaryMuscle": "Широчайшие",
+    "difficulty": "intermediate",
+    "laterality": "bilateral",
+    "exerciseType": "compound",
+    "requiredEquipmentOptions": [
+      [
+        "machine"
+      ]
+    ],
+    "progression": "Сначала устойчивое выполнение и повторения, затем небольшое увеличение нагрузки.",
+    "regression": "Тяга в тренажёре",
+    "visualReady": false,
+    "visualIssue": "illustration_pending"
+  },
+  "prone_w_raise": {
+    "movementPattern": "scapular_pull",
+    "primaryMuscle": "Ромбовидные",
+    "difficulty": "beginner",
+    "laterality": "bilateral",
+    "exerciseType": "accessory",
+    "requiredEquipmentOptions": [
+      [
+        "bodyweight"
+      ]
+    ],
+    "progression": "Сначала устойчивое выполнение и повторения, затем небольшое увеличение нагрузки.",
+    "regression": "Y-подъём без веса",
+    "visualReady": false,
+    "visualIssue": "illustration_pending"
+  },
+  "russian_twist": {
+    "movementPattern": "trunk_rotation",
+    "primaryMuscle": "Кор",
+    "difficulty": "intermediate",
+    "laterality": "bilateral",
+    "exerciseType": "core",
+    "requiredEquipmentOptions": [
+      [
+        "bodyweight"
+      ]
+    ],
+    "progression": "Сначала устойчивое выполнение и повторения, затем небольшое увеличение нагрузки.",
+    "regression": "Мёртвый жук",
+    "visualReady": false,
+    "visualIssue": "illustration_pending"
+  },
+  "mountain_climber": {
+    "movementPattern": "anti_extension",
+    "primaryMuscle": "Кор",
+    "difficulty": "beginner",
+    "laterality": "contralateral",
+    "exerciseType": "core",
+    "requiredEquipmentOptions": [
+      [
+        "bodyweight"
+      ]
+    ],
+    "progression": "Сначала устойчивое выполнение и повторения, затем небольшое увеличение нагрузки.",
+    "regression": "Планка",
+    "visualReady": false,
+    "visualIssue": "illustration_pending"
+  },
+  "hanging_knee_raise": {
+    "movementPattern": "trunk_flexion",
+    "primaryMuscle": "Кор",
+    "difficulty": "intermediate",
+    "laterality": "bilateral",
+    "exerciseType": "core",
+    "requiredEquipmentOptions": [
+      [
+        "pullup_bar"
+      ]
+    ],
+    "progression": "Сначала устойчивое выполнение и повторения, затем небольшое увеличение нагрузки.",
+    "regression": "Обратные скручивания",
+    "visualReady": false,
+    "visualIssue": "illustration_pending"
+  },
+  "hollow_hold": {
+    "movementPattern": "anti_extension",
+    "primaryMuscle": "Кор",
+    "difficulty": "intermediate",
+    "laterality": "bilateral",
+    "exerciseType": "core",
+    "requiredEquipmentOptions": [
+      [
+        "bodyweight"
+      ]
+    ],
+    "progression": "Сначала устойчивое выполнение и повторения, затем небольшое увеличение нагрузки.",
+    "regression": "Мёртвый жук",
+    "visualReady": false,
+    "visualIssue": "illustration_pending"
+  },
+  "heel_taps": {
+    "movementPattern": "anti_lateral_flexion",
+    "primaryMuscle": "Кор",
+    "difficulty": "beginner",
+    "laterality": "unilateral",
+    "exerciseType": "core",
+    "requiredEquipmentOptions": [
+      [
+        "bodyweight"
+      ]
+    ],
+    "progression": "Сначала устойчивое выполнение и повторения, затем небольшое увеличение нагрузки.",
+    "regression": "Боковая планка с колен",
+    "visualReady": false,
+    "visualIssue": "illustration_pending"
+  },
+  "plank_shoulder_tap": {
+    "movementPattern": "anti_rotation",
+    "primaryMuscle": "Кор",
+    "difficulty": "intermediate",
+    "laterality": "contralateral",
+    "exerciseType": "core",
+    "requiredEquipmentOptions": [
+      [
+        "bodyweight"
+      ]
+    ],
+    "progression": "Сначала устойчивое выполнение и повторения, затем небольшое увеличение нагрузки.",
+    "regression": "Планка",
+    "visualReady": false,
+    "visualIssue": "illustration_pending"
+  },
+  "suitcase_carry": {
+    "movementPattern": "anti_lateral_flexion",
+    "primaryMuscle": "Кор",
+    "difficulty": "beginner",
+    "laterality": "unilateral",
+    "exerciseType": "core",
+    "requiredEquipmentOptions": [
+      [
+        "dumbbells"
+      ]
+    ],
+    "progression": "Сначала устойчивое выполнение и повторения, затем небольшое увеличение нагрузки.",
+    "regression": "Боковая планка",
+    "visualReady": false,
+    "visualIssue": "illustration_pending"
+  },
+  "bicycle_crunch": {
+    "movementPattern": "trunk_flexion",
+    "primaryMuscle": "Кор",
+    "difficulty": "intermediate",
+    "laterality": "contralateral",
+    "exerciseType": "core",
+    "requiredEquipmentOptions": [
+      [
+        "bodyweight"
+      ]
+    ],
+    "progression": "Сначала устойчивое выполнение и повторения, затем небольшое увеличение нагрузки.",
+    "regression": "Скручивания",
+    "visualReady": false,
+    "visualIssue": "illustration_pending"
+  }
+});
+
 for (const exercise of Object.values(exercises)) {
   const metadata = exerciseMetadata[exercise.id] || {};
   Object.assign(exercise, {
