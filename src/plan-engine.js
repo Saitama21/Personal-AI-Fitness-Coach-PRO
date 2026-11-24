@@ -10,7 +10,7 @@ import {
 
 const DAY_NAMES = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"];
 const LEVEL_RANK = { beginner: 1, intermediate: 2, advanced: 3 };
-const GYM_EQUIPMENT = ["bodyweight", "dumbbells", "barbell", "cable", "machine"];
+const GYM_EQUIPMENT = ["bodyweight", "dumbbells", "barbell", "cable", "machine", "bench", "rack", "pullup_bar"];
 
 function clamp(value, min, max) {
   return Math.min(max, Math.max(min, value));
@@ -223,7 +223,7 @@ function repRangeFor(goal, exercise, phase) {
     if (phase === "deload") return { min: 20, max: 30, label: "20–30 сек." };
     return { min: 25, max: 45, label: "25–45 сек." };
   }
-  if (exercise.exerciseType === "core") return { min: 6, max: 12, label: "6–12/сторона" };
+  if (exercise.exerciseType === "core") return { min: 6, max: 12, label: ["unilateral", "contralateral"].includes(exercise.laterality) ? "6–12/сторона" : "6–12" };
 
   const primary = exercise.exerciseType === "compound";
   const isolation = ["isolation", "accessory"].includes(exercise.exerciseType);

@@ -35,7 +35,7 @@ export const SESSION_LIBRARY = Object.freeze({
       slot("primary", ["horizontal_push", "vertical_push"], ["Грудные", "Передняя дельта"], { required: true }),
       slot("primary", ["horizontal_pull", "vertical_pull"], ["Широчайшие", "Ромбовидные"], { required: true }),
       slot("secondary", ["hip_hinge", "hip_extension"], ["Ягодичные", "Бицепс бедра"], { required: true }),
-      slot("core", ["anti_extension"], ["Кор"])
+      slot("core", ["anti_extension", "anti_rotation", "anti_lateral_flexion", "trunk_flexion"], ["Кор"])
     ]
   },
   full_b: {
@@ -47,7 +47,7 @@ export const SESSION_LIBRARY = Object.freeze({
       slot("primary", ["vertical_pull", "horizontal_pull"], ["Широчайшие"], { required: true }),
       slot("secondary", ["unilateral_knee_dominant", "squat"], ["Квадрицепсы", "Ягодичные"], { required: true }),
       slot("secondary", ["vertical_push", "horizontal_push"], ["Грудные", "Средняя дельта"], { required: true }),
-      slot("core", ["anti_extension"], ["Кор"])
+      slot("core", ["anti_extension", "anti_rotation", "anti_lateral_flexion", "trunk_flexion"], ["Кор"])
     ]
   },
   full_c: {
@@ -70,8 +70,8 @@ export const SESSION_LIBRARY = Object.freeze({
       slot("primary", ["squat", "unilateral_knee_dominant"], ["Квадрицепсы"], { required: true }),
       slot("primary", ["hip_hinge", "hip_extension"], ["Бицепс бедра", "Ягодичные"], { required: true }),
       slot("secondary", ["unilateral_knee_dominant", "squat"], ["Квадрицепсы", "Ягодичные"], { required: true }),
-      slot("accessory", ["plantar_flexion", "hip_abduction"], ["Икроножные", "Средняя ягодичная"]),
-      slot("core", ["anti_extension"], ["Кор"], { required: true })
+      slot("accessory", ["plantar_flexion", "hip_abduction", "knee_flexion"], ["Икроножные", "Средняя ягодичная", "Бицепс бедра"]),
+      slot("core", ["anti_extension", "anti_rotation", "anti_lateral_flexion", "trunk_flexion"], ["Кор"], { required: true })
     ]
   },
   lower_volume: {
@@ -93,9 +93,9 @@ export const SESSION_LIBRARY = Object.freeze({
     slots: [
       slot("primary", ["vertical_pull", "horizontal_pull"], ["Широчайшие"], { required: true }),
       slot("primary", ["horizontal_pull", "vertical_pull"], ["Ромбовидные"]),
-      slot("accessory", ["horizontal_abduction", "scapular_pull"], ["Задняя дельта", "Трапеции"]),
+      slot("accessory", ["horizontal_abduction", "scapular_pull", "elbow_flexion", "shoulder_extension"], ["Задняя дельта", "Трапеции", "Бицепс"]),
       slot("secondary", ["vertical_push", "horizontal_push"], ["Средняя дельта", "Грудные"], { required: true }),
-      slot("core", ["anti_extension"], ["Кор"], { required: true })
+      slot("core", ["anti_extension", "anti_rotation", "anti_lateral_flexion", "trunk_flexion"], ["Кор"], { required: true })
     ]
   },
   upper_push: {
@@ -105,9 +105,9 @@ export const SESSION_LIBRARY = Object.freeze({
     slots: [
       slot("primary", ["horizontal_push", "vertical_push"], ["Грудные"], { required: true }),
       slot("primary", ["vertical_push", "horizontal_push"], ["Средняя дельта"]),
-      slot("accessory", ["shoulder_abduction"], ["Средняя дельта"]),
+      slot("accessory", ["shoulder_abduction", "elbow_extension", "chest_adduction"], ["Средняя дельта", "Трицепс", "Грудные"]),
       slot("secondary", ["horizontal_pull", "vertical_pull"], ["Ромбовидные", "Широчайшие"], { required: true }),
-      slot("core", ["anti_extension"], ["Кор"], { required: true })
+      slot("core", ["anti_extension", "anti_rotation", "anti_lateral_flexion", "trunk_flexion"], ["Кор"], { required: true })
     ]
   },
   conditioning: {
@@ -119,7 +119,7 @@ export const SESSION_LIBRARY = Object.freeze({
       slot("secondary", ["horizontal_push", "vertical_push"], ["Грудные"], { required: true }),
       slot("secondary", ["horizontal_pull", "vertical_pull"], ["Широчайшие"], { required: true }),
       slot("accessory", ["plantar_flexion", "hip_abduction"], ["Икроножные", "Средняя ягодичная"]),
-      slot("core", ["anti_extension"], ["Кор"], { required: true })
+      slot("core", ["anti_extension", "anti_rotation", "anti_lateral_flexion", "trunk_flexion"], ["Кор"], { required: true })
     ]
   }
 });
